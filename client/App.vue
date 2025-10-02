@@ -1,13 +1,16 @@
 <template>
   <div class="container">
-    <div v-if="!hasValidToken" class="access-denied">
-      <h1>🔒 Accès restreint</h1>
-      <p>Cette page nécessite un token d'accès valide.</p>
-      <p>
-        Veuillez scanner le QR code pour obtenir l'URL avec le token correct.
-      </p>
+    <div v-if="!hasValidToken && !tokenChecked" class="loading">
+      <h1>� Vérification en cours...</h1>
+      <p>Validation du token d'accès...</p>
     </div>
     <div v-else>
+      <div v-if="!hasValidToken && tokenChecked" class="token-warning">
+        <p>
+          ⚠️ Token expiré ou invalide - Les messages peuvent ne pas
+          s'enregistrer
+        </p>
+      </div>
       <h1 class="modern-title">📝 Mur de Messages Public</h1>
       <p class="context-box">
         Cet espace est un mur public de témoignages concernant les violences
@@ -29,7 +32,9 @@
           placeholder="Votre message"
           required
         />
-        <button type="submit" class="modern-btn">Envoyer</button>
+        <button type="submit" class="modern-btn" :disabled="!hasValidToken">
+          {{ hasValidToken ? "Envoyer" : "Token invalide" }}
+        </button>
       </form>
       <div class="messages">
         <div
@@ -76,6 +81,7 @@ const messages = ref([]);
 const author = ref("");
 const content = ref("");
 const hasValidToken = ref(false);
+const tokenChecked = ref(false);
 
 // Get token from URL parameters
 function getTokenFromUrl() {
@@ -88,6 +94,7 @@ async function validateToken() {
   const token = getTokenFromUrl();
   if (!token) {
     hasValidToken.value = false;
+    tokenChecked.value = true;
     return;
   }
 
@@ -97,31 +104,52 @@ async function validateToken() {
   } catch (error) {
     console.error("Error validating token:", error);
     hasValidToken.value = false;
+  } finally {
+    tokenChecked.value = true;
   }
 }
 
 onMounted(async () => {
-  await validateToken();
-
-  if (hasValidToken.value) {
+  // Load messages immediately (they'll be visible once token is validated)
+  try {
     const res = await axios.get(`${API_URL}/messages`);
     messages.value = res.data;
-    socket.on("new-message", (msg) => {
-      messages.value.push(msg);
-    });
+  } catch (error) {
+    console.error("Error loading messages:", error);
   }
 
+  // Set up socket listener for new messages
+  socket.on("new-message", (msg) => {
+    messages.value.push(msg);
+  });
+
+  // Validate token
+  await validateToken();
+
   // Check token validity every 10 seconds
-  setInterval(validateToken, 10000);
+  setInterval(() => {
+    validateToken();
+  }, 10000);
 });
 
 async function sendMessage() {
-  if (!author.value || !content.value || !hasValidToken.value) return;
-  await axios.post(`${API_URL}/messages`, {
-    author: author.value,
-    content: content.value,
-  });
-  content.value = "";
+  if (!author.value || !content.value) return;
+
+  if (!hasValidToken.value) {
+    alert("Token invalide ou expiré. Impossible d'envoyer le message.");
+    return;
+  }
+
+  try {
+    await axios.post(`${API_URL}/messages`, {
+      author: author.value,
+      content: content.value,
+    });
+    content.value = "";
+  } catch (error) {
+    console.error("Error sending message:", error);
+    alert("Erreur lors de l'envoi du message. Veuillez réessayer.");
+  }
 }
 </script>
 
@@ -153,6 +181,41 @@ async function sendMessage() {
   color: #4b5563;
   margin-bottom: 1rem;
   line-height: 1.5;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.loading h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #2563eb;
+}
+
+.loading p {
+  font-size: 1.1rem;
+  color: #4b5563;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.token-warning {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.token-warning p {
+  color: #92400e;
+  font-weight: 500;
+  margin: 0;
+  font-size: 0.95rem;
 }
 
 .modern-title {
@@ -208,9 +271,14 @@ async function sendMessage() {
   box-shadow: 0 2px 8px #3182ce22;
   transition: background 0.2s, box-shadow 0.2s;
 }
-.modern-btn:hover {
+.modern-btn:hover:not(:disabled) {
   background: linear-gradient(90deg, #2563eb 60%, #4299e1 100%);
   box-shadow: 0 4px 16px #3182ce33;
+}
+.modern-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 .messages {
   margin-top: 1.5rem;

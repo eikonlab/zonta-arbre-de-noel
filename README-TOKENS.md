@@ -35,7 +35,7 @@ npm run dev
 ### 3. Client QR
 
 ```bash
-cd qr-client
+cd client-qr
 npm install
 npm run dev
 ```
@@ -65,6 +65,6 @@ npm run dev
 
 Pour changer les ports ou l'URL du client, modifiez :
 
-- `qr-client/App.vue` : ligne `const CLIENT_URL`
-- `qr-client/vite.config.mjs` : port du client QR
+- `client-qr/App.vue` : ligne `const CLIENT_URL`
+- `client-qr/vite.config.mjs` : port du client QR
 - `client/vite.config.js` : port du client principal (si différent de 5173)
