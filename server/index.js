@@ -5,12 +5,10 @@ const { Server } = require('socket.io');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const crypto = require('crypto');
-const Database = require('./models/database');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
-const db = new Database();
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -110,39 +108,34 @@ const DEBUG_MESSAGES = [
 ];
 
 // Route debug pour injecter les messages de test
-app.post('/debug/messages', async (req, res) => {
-  try {
-    for (const { author, content, toxicity } of DEBUG_MESSAGES) {
-      // Utilise la même logique de flagging
-      let flagged = null;
-      const onTopic = isOnTopic(content);
-      if (!onTopic) flagged = 'hors-sujet';
-      if (TOXIC_PATTERNS.some(re => re.test(content))) {
-        flagged = flagged ? flagged + ', toxic' : 'toxic';
-      } else if (toxicity !== null && toxicity > 0.7) {
-        flagged = flagged ? flagged + ', toxic' : 'toxic';
-      }
-      const message = {
-        author,
-        content,
-        toxicity,
-        onTopic,
-        flagged,
-        createdAt: new Date().toISOString()
-      };
-      
-      const savedMessage = await db.insertMessage(message);
-      io.emit('new-message', savedMessage);
+app.post('/debug/messages', (req, res) => {
+  DEBUG_MESSAGES.forEach(({ author, content, toxicity }) => {
+    // Utilise la même logique de flagging
+    let flagged = null;
+    const onTopic = isOnTopic(content);
+    if (!onTopic) flagged = 'hors-sujet';
+    if (TOXIC_PATTERNS.some(re => re.test(content))) {
+      flagged = flagged ? flagged + ', toxic' : 'toxic';
+    } else if (toxicity !== null && toxicity > 0.7) {
+      flagged = flagged ? flagged + ', toxic' : 'toxic';
     }
-    res.json({ status: 'ok', count: DEBUG_MESSAGES.length });
-  } catch (error) {
-    console.error('Error inserting debug messages:', error);
-    res.status(500).json({ error: 'Failed to insert debug messages' });
-  }
+    const message = {
+      id: Date.now() + Math.floor(Math.random() * 10000),
+      author,
+      content,
+      toxicity,
+      onTopic,
+      flagged,
+      createdAt: new Date().toISOString()
+    };
+    messages.push(message);
+    io.emit('new-message', message);
+  });
+  res.json({ status: 'ok', count: DEBUG_MESSAGES.length });
 });
 
-// Stockage en mémoire remplacé par base de données
-// Les messages sont maintenant stockés dans SQLite via la classe Database
+// Stockage en mémoire (à remplacer par une base de données si besoin)
+let messages = [];
 
 // Détection améliorée du hors-sujet et de la toxicité
 const TOPIC_KEYWORDS = [
@@ -203,14 +196,8 @@ function isOnTopic(text) {
 const { getToxicityScore } = require('./models/perspective');
 
 // Récupérer tous les messages
-app.get('/messages', async (req, res) => {
-  try {
-    const messages = await db.getAllMessages();
-    res.json(messages);
-  } catch (error) {
-    console.error('Error fetching messages:', error);
-    res.status(500).json({ error: 'Failed to fetch messages' });
-  }
+app.get('/messages', (req, res) => {
+  res.json(messages);
 });
 
 // Poster un message
@@ -244,22 +231,70 @@ app.post('/messages', async (req, res) => {
   }
 
   const message = {
+    id: Date.now(),
     author,
     content,
     toxicity,
     onTopic,
     flagged,
+    hidden: false, // Default to visible
     createdAt: new Date().toISOString()
   };
+  messages.push(message);
+  io.emit('new-message', message);
+  res.status(201).json(message);
+});
 
-  try {
-    const savedMessage = await db.insertMessage(message);
-    io.emit('new-message', savedMessage);
-    res.status(201).json(savedMessage);
-  } catch (error) {
-    console.error('Error saving message:', error);
-    res.status(500).json({ error: 'Failed to save message' });
+// Mettre à jour un message (pour la modération)
+app.patch('/messages/:id', (req, res) => {
+  const messageId = parseInt(req.params.id);
+  const messageIndex = messages.findIndex(m => m.id === messageId);
+
+  if (messageIndex === -1) {
+    return res.status(404).json({ error: 'Message non trouvé' });
   }
+
+  const { hidden } = req.body;
+  if (typeof hidden === 'boolean') {
+    messages[messageIndex].hidden = hidden;
+    io.emit('message-updated', messages[messageIndex]);
+    res.json(messages[messageIndex]);
+  } else {
+    res.status(400).json({ error: 'Données invalides' });
+  }
+});
+
+// Supprimer un message
+app.delete('/messages/:id', (req, res) => {
+  const messageId = parseInt(req.params.id);
+  const messageIndex = messages.findIndex(m => m.id === messageId);
+
+  if (messageIndex === -1) {
+    return res.status(404).json({ error: 'Message non trouvé' });
+  }
+
+  messages.splice(messageIndex, 1);
+  io.emit('message-deleted', messageId);
+  res.json({ success: true });
+});
+
+// Action groupée sur les messages
+app.patch('/messages/bulk', (req, res) => {
+  const { updates } = req.body;
+
+  if (!Array.isArray(updates)) {
+    return res.status(400).json({ error: 'Format invalide' });
+  }
+
+  updates.forEach(update => {
+    const messageIndex = messages.findIndex(m => m.id === update.id);
+    if (messageIndex !== -1 && typeof update.hidden === 'boolean') {
+      messages[messageIndex].hidden = update.hidden;
+      io.emit('message-updated', messages[messageIndex]);
+    }
+  });
+
+  res.json({ success: true, updated: updates.length });
 });
 
 // Socket.IO pour le temps réel
@@ -267,32 +302,7 @@ io.on('connection', (socket) => {
   console.log('Nouvel utilisateur connecté');
 });
 
-// Debug endpoint to clear all messages
-app.delete('/debug/messages', async (req, res) => {
-  try {
-    const deletedCount = await db.clearMessages();
-    res.json({ status: 'ok', deletedCount });
-  } catch (error) {
-    console.error('Error clearing messages:', error);
-    res.status(500).json({ error: 'Failed to clear messages' });
-  }
-});
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\nShutting down gracefully...');
-  await db.close();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  console.log('\nShutting down gracefully...');
-  await db.close();
-  process.exit(0);
-});
-
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Serveur démarré sur http://localhost:${PORT}`);
-  console.log('Base de données SQLite initialisée');
 });
