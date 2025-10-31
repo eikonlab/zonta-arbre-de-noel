@@ -39,6 +39,8 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+        env:
+          VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
 
       - name: Install SSH Host Key
         id: deploy
