@@ -27,12 +27,13 @@
           placeholder="Votre nom"
           required
         />
-        <input
+        <textarea
           v-model="content"
-          class="modern-input"
+          class="modern-input modern-textarea"
           placeholder="Votre message"
+          rows="4"
           required
-        />
+        ></textarea>
         <button type="submit" class="modern-btn" :disabled="!hasValidToken">
           {{ hasValidToken ? "Envoyer" : "Token invalide" }}
         </button>
@@ -199,6 +200,7 @@ async function sendMessage() {
 }
 .modern-form {
   display: flex;
+  flex-direction: column;
   gap: 0.7rem;
   margin-bottom: 1.5rem;
   background: #f5f7fa;
@@ -218,6 +220,12 @@ async function sendMessage() {
 .modern-input:focus {
   border: 1.5px solid #3182ce;
   outline: none;
+}
+.modern-textarea {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+  line-height: 1.5;
 }
 .modern-btn {
   background: linear-gradient(90deg, #3182ce 60%, #63b3ed 100%);
