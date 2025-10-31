@@ -335,7 +335,8 @@ io.on('connection', (socket) => {
   console.log('Nouvel utilisateur connecté');
 });
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`Serveur démarré sur http://localhost:${PORT}`);
+const PORT = process.env.PORT || 8102;
+const HOST = process.env.IP || '::';
+server.listen(PORT, HOST, () => {
+  console.log(`Serveur démarré sur http://[${HOST}]:${PORT}`);
 });
