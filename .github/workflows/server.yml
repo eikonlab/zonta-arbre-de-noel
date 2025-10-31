@@ -44,25 +44,16 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           name: github-actions
           known_hosts: ${{ vars.SSH_HOST_KEY }}
-          config: |
-            host ${{ vars.SSH_HOST }}
-            IdentityFile ~/.ssh/github-actions
-            IdentitiesOnly yes
-            ForwardAgent yes
-
-      - name: Adds SSH Agent
-        run: |
-          eval "$(ssh-agent -s)"
-          ssh-add -D
-          ssh-add ~/.ssh/github-actions
+          if_key_exists: replace
 
       - name: Set SSH Key Permissions
         run: chmod 600 ~/.ssh/github-actions
 
-      - name: Sync .ouput files to server
-        run: rsync -auvzrl --delete --ignore-missing-args -e "ssh -o BatchMode=yes -o StrictHostKeyChecking=no" ./ ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }}:${{ vars.DEPLOY_PATH }}/server
-        env:
-          RSYNC_RSH: "ssh -o BatchMode=yes -o StrictHostKeyChecking=no"
+      - name: Test SSH Connection
+        run: ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i ~/.ssh/github-actions ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }} 'echo "SSH connection successful"'
+
+      - name: Sync files to server
+        run: rsync -auvzrl --delete --ignore-missing-args -e "ssh -i ~/.ssh/github-actions -o BatchMode=yes -o StrictHostKeyChecking=no" ./ ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }}:${{ vars.DEPLOY_PATH }}/server
 
       - name: Kickstart node server
         run: curl --basic --user '${{ secrets.ALWAYSDATA_API }} account=eikon:' --data '' --request POST https://api.alwaysdata.com/v1/site/${{ vars.ALWAYSDATA_SITE_SERVER_ID }}/restart/
