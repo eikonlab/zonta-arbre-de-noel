@@ -1,10 +1,10 @@
-# Arbre de Noël - Mur de Messages
+# Arbre de Noël - Zonta
 
 Plateforme de témoignages sur les violences faites aux femmes avec système de modération.
 
 ## Architecture
 
-Le projet est composé de 4 applications :
+Le projet est composé de 2 applications principales :
 
 ### 1. Serveur (`/server`)
 
@@ -14,27 +14,34 @@ Le projet est composé de 4 applications :
 - Système de tokens temporaires pour contrôler l'accès
 - Base de données SQLite pour persistance
 
-### 2. Client Public (`/client`)
+### 2. Client (`/client`) - Application unifiée
 
-- **Port** : 3000 (par défaut)
+Le client contient maintenant 3 modes d'exécution dans une seule structure :
+
+#### Mode Public (défaut)
+
+- **Port** : 5173
 - Interface publique pour consulter et poster des messages
 - Validation par token pour pouvoir poster
 - Affichage uniquement des messages non masqués
+- **Commande** : `npm start` ou `npm run start:public`
 
-### 3. Client QR (`/client-qr`)
+#### Mode Admin
 
-- **Port** : 3002
-- Interface spéciale qui génère un QR code avec le token actuel
-- Permet d'accéder rapidement au client public avec un token valide
-
-### 4. Client Admin (`/client-admin`) 🆕
-
-- **Port** : 3003
-- **Interface de modération complète**
+- **Port** : 5174
+- Interface de modération complète
 - Visualisation de tous les messages avec métadonnées
 - Masquer/afficher des messages individuellement ou en groupe
 - Supprimer des messages
 - Filtres et statistiques temps réel
+- **Commande** : `npm run start:admin`
+
+#### Mode QR
+
+- **Port** : 5175
+- Interface spéciale qui génère un QR code avec le token actuel
+- Permet d'accéder rapidement au client public avec un token valide
+- **Commande** : `npm run start:qr`
 
 ## Démarrage rapide
 
@@ -46,7 +53,7 @@ npm install
 npm start
 ```
 
-### 2. Client public
+### 2. Client - Mode Public (par défaut)
 
 ```bash
 cd client
@@ -54,21 +61,21 @@ npm install
 npm start
 ```
 
-### 3. Client QR
+### 3. Client - Mode Admin
 
 ```bash
-cd client-qr
-npm install
-npm start
+cd client
+npm run start:admin
 ```
 
-### 4. Client admin (nouveau)
+### 4. Client - Mode QR
 
 ```bash
-cd client-admin
-npm install
-npm start
+cd client
+npm run start:qr
 ```
+
+> **Note** : Les anciens dossiers `client-admin` et `client-qr` peuvent être supprimés car tout est maintenant unifié dans `/client`.
 
 ## Workflow de modération
 
@@ -108,6 +115,29 @@ npm start
 - **Client QR** : Génère les tokens d'accès
 - **Client admin** : Accès libre (à sécuriser selon les besoins)
 - **Serveur** : Validation côté serveur des tokens et données
+
+## Structure du projet
+
+```
+arbre-de-noel/
+├── server/                 # Backend Node.js
+│   ├── index.js
+│   ├── models/
+│   └── messages.db
+├── client/                 # Frontend unifié (3 modes)
+│   ├── src/
+│   │   ├── apps/
+│   │   │   ├── AppPublic.vue   # Mode public
+│   │   │   ├── AppAdmin.vue    # Mode admin
+│   │   │   └── AppQR.vue       # Mode QR
+│   │   ├── App.vue        # Router principal
+│   │   ├── main.js
+│   │   ├── router/        # Router Vue (mode public)
+│   │   └── views/         # Vues du mode public
+│   └── package.json
+├── client-admin/          # [OBSOLÈTE - à supprimer]
+└── client-qr/             # [OBSOLÈTE - à supprimer]
+```
 
 ## Personnalisation
 

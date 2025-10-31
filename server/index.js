@@ -108,34 +108,38 @@ const DEBUG_MESSAGES = [
 ];
 
 // Route debug pour injecter les messages de test
-app.post('/debug/messages', (req, res) => {
-  DEBUG_MESSAGES.forEach(({ author, content, toxicity }) => {
-    // Utilise la même logique de flagging
-    let flagged = null;
-    const onTopic = isOnTopic(content);
-    if (!onTopic) flagged = 'hors-sujet';
-    if (TOXIC_PATTERNS.some(re => re.test(content))) {
-      flagged = flagged ? flagged + ', toxic' : 'toxic';
-    } else if (toxicity !== null && toxicity > 0.7) {
-      flagged = flagged ? flagged + ', toxic' : 'toxic';
+app.post('/debug/messages', async (req, res) => {
+  try {
+    const createdMessages = [];
+    for (const { author, content, toxicity } of DEBUG_MESSAGES) {
+      // Utilise la même logique de flagging
+      let flagged = null;
+      const onTopic = isOnTopic(content);
+      if (!onTopic) flagged = 'hors-sujet';
+      if (TOXIC_PATTERNS.some(re => re.test(content))) {
+        flagged = flagged ? flagged + ', toxic' : 'toxic';
+      } else if (toxicity !== null && toxicity > 0.7) {
+        flagged = flagged ? flagged + ', toxic' : 'toxic';
+      }
+      const messageData = {
+        author,
+        content,
+        toxicity,
+        onTopic,
+        flagged,
+        hidden: false,
+        createdAt: new Date().toISOString()
+      };
+      const message = await createMessage(messageData);
+      createdMessages.push(message);
+      io.emit('new-message', message);
     }
-    const message = {
-      id: Date.now() + Math.floor(Math.random() * 10000),
-      author,
-      content,
-      toxicity,
-      onTopic,
-      flagged,
-      createdAt: new Date().toISOString()
-    };
-    messages.push(message);
-    io.emit('new-message', message);
-  });
-  res.json({ status: 'ok', count: DEBUG_MESSAGES.length });
+    res.json({ status: 'ok', count: createdMessages.length });
+  } catch (error) {
+    console.error('Error creating debug messages:', error);
+    res.status(500).json({ error: 'Failed to create debug messages' });
+  }
 });
-
-// Stockage en mémoire (à remplacer par une base de données si besoin)
-let messages = [];
 
 // Détection améliorée du hors-sujet et de la toxicité
 const TOPIC_KEYWORDS = [
@@ -195,9 +199,18 @@ function isOnTopic(text) {
 // Perspective API (appel réel)
 const { getToxicityScore } = require('./models/perspective');
 
+// Database
+const { getAllMessages, createMessage, updateMessage, deleteMessage, bulkUpdateMessages } = require('./models/database');
+
 // Récupérer tous les messages
-app.get('/messages', (req, res) => {
-  res.json(messages);
+app.get('/messages', async (req, res) => {
+  try {
+    const messages = await getAllMessages();
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
 });
 
 // Poster un message
@@ -230,8 +243,7 @@ app.post('/messages', async (req, res) => {
     flagged = flagged ? flagged + ', toxic' : 'toxic';
   }
 
-  const message = {
-    id: Date.now(),
+  const messageData = {
     author,
     content,
     toxicity,
@@ -240,61 +252,82 @@ app.post('/messages', async (req, res) => {
     hidden: false, // Default to visible
     createdAt: new Date().toISOString()
   };
-  messages.push(message);
-  io.emit('new-message', message);
-  res.status(201).json(message);
+
+  try {
+    const message = await createMessage(messageData);
+    io.emit('new-message', message);
+    res.status(201).json(message);
+  } catch (error) {
+    console.error('Error creating message:', error);
+    res.status(500).json({ error: 'Failed to create message' });
+  }
 });
 
 // Mettre à jour un message (pour la modération)
-app.patch('/messages/:id', (req, res) => {
+app.patch('/messages/:id', async (req, res) => {
   const messageId = parseInt(req.params.id);
-  const messageIndex = messages.findIndex(m => m.id === messageId);
+  const { hidden } = req.body;
 
-  if (messageIndex === -1) {
-    return res.status(404).json({ error: 'Message non trouvé' });
+  if (typeof hidden !== 'boolean') {
+    return res.status(400).json({ error: 'Données invalides' });
   }
 
-  const { hidden } = req.body;
-  if (typeof hidden === 'boolean') {
-    messages[messageIndex].hidden = hidden;
-    io.emit('message-updated', messages[messageIndex]);
-    res.json(messages[messageIndex]);
-  } else {
-    res.status(400).json({ error: 'Données invalides' });
+  try {
+    const updatedMessage = await updateMessage(messageId, { hidden });
+    io.emit('message-updated', updatedMessage);
+    res.json(updatedMessage);
+  } catch (error) {
+    console.error('Error updating message:', error);
+    if (error.message === 'Message not found') {
+      res.status(404).json({ error: 'Message non trouvé' });
+    } else {
+      res.status(500).json({ error: 'Failed to update message' });
+    }
   }
 });
 
 // Supprimer un message
-app.delete('/messages/:id', (req, res) => {
+app.delete('/messages/:id', async (req, res) => {
   const messageId = parseInt(req.params.id);
-  const messageIndex = messages.findIndex(m => m.id === messageId);
 
-  if (messageIndex === -1) {
-    return res.status(404).json({ error: 'Message non trouvé' });
+  try {
+    await deleteMessage(messageId);
+    io.emit('message-deleted', messageId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    if (error.message === 'Message not found') {
+      res.status(404).json({ error: 'Message non trouvé' });
+    } else {
+      res.status(500).json({ error: 'Failed to delete message' });
+    }
   }
-
-  messages.splice(messageIndex, 1);
-  io.emit('message-deleted', messageId);
-  res.json({ success: true });
 });
 
 // Action groupée sur les messages
-app.patch('/messages/bulk', (req, res) => {
+app.patch('/messages/bulk', async (req, res) => {
   const { updates } = req.body;
 
   if (!Array.isArray(updates)) {
     return res.status(400).json({ error: 'Format invalide' });
   }
 
-  updates.forEach(update => {
-    const messageIndex = messages.findIndex(m => m.id === update.id);
-    if (messageIndex !== -1 && typeof update.hidden === 'boolean') {
-      messages[messageIndex].hidden = update.hidden;
-      io.emit('message-updated', messages[messageIndex]);
-    }
-  });
+  try {
+    await bulkUpdateMessages(updates);
 
-  res.json({ success: true, updated: updates.length });
+    // Fetch updated messages and emit events
+    for (const update of updates) {
+      if (typeof update.hidden === 'boolean') {
+        const updatedMessage = await updateMessage(update.id, { hidden: update.hidden });
+        io.emit('message-updated', updatedMessage);
+      }
+    }
+
+    res.json({ success: true, updated: updates.length });
+  } catch (error) {
+    console.error('Error bulk updating messages:', error);
+    res.status(500).json({ error: 'Failed to update messages' });
+  }
 });
 
 // Socket.IO pour le temps réel
