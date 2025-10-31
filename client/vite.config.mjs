@@ -5,9 +5,9 @@ export default defineConfig(({ mode }) => {
   const appMode = process.env.VITE_APP_MODE || 'public'
 
   const portMap = {
-    public: 5173,
-    admin: 5174,
-    qr: 5175
+    public: 3000,
+    admin: 3001,
+    qr: 3002
   }
 
   return {
@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       __APP_MODE__: JSON.stringify(appMode)
-    }
+    },
+    envPrefix: 'VITE_'
   }
 })

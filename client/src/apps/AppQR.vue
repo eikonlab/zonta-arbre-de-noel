@@ -57,8 +57,8 @@ import { ref, onMounted, onUnmounted } from "vue";
 import QRCode from "qrcode";
 import axios from "axios";
 
-const API_URL = "http://localhost:3001";
-const CLIENT_URL = "http://localhost:5173"; // Default Vite port for main client
+const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+const CLIENT_URL = import.meta.env.VITE_CLIENT_URL || window.location.origin;
 
 const loading = ref(true);
 const error = ref("");

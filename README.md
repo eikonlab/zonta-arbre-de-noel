@@ -53,7 +53,22 @@ npm install
 npm start
 ```
 
-### 2. Client - Mode Public (par défaut)
+### 2. Client - Configuration
+
+Avant de démarrer le client, créez un fichier `.env` dans le dossier `/client` :
+
+```bash
+cd client
+cp .env.example .env
+```
+
+Modifiez le fichier `.env` pour configurer l'URL du serveur :
+
+```env
+VITE_SERVER_URL=http://localhost:3001
+```
+
+### 3. Client - Mode Public (par défaut)
 
 ```bash
 cd client
@@ -61,14 +76,14 @@ npm install
 npm start
 ```
 
-### 3. Client - Mode Admin
+### 4. Client - Mode Admin
 
 ```bash
 cd client
 npm run start:admin
 ```
 
-### 4. Client - Mode QR
+### 5. Client - Mode QR
 
 ```bash
 cd client

@@ -1,0 +1,62 @@
+name: Deploy CLIENT to Alwaysdata
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/client.yml
+      - client/**
+
+jobs:
+  ci:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: client
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node: [18]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup node env
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          check-latest: true
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Install SSH Host Key
+        id: deploy
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.DEPLOY_KEY }}
+          name: github-actions
+          known_hosts: ${{ vars.SSH_HOST_KEY }}
+          if_key_exists: replace
+
+      - name: Set SSH Key Permissions
+        run: chmod 600 ~/.ssh/github-actions
+
+      - name: Test SSH Connection
+        run: ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i ~/.ssh/github-actions ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }} 'echo "SSH connection successful"'
+
+      - name: Sync built files to server
+        run: rsync -auvzrl --delete --ignore-missing-args -e "ssh -i ~/.ssh/github-actions -o BatchMode=yes -o StrictHostKeyChecking=no" ./dist/ ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }}:${{ vars.DEPLOY_PATH }}/client
+
+      - name: Kickstart client site
+        run: curl --basic --user '${{ secrets.ALWAYSDATA_API }} account=eikon:' --data '' --request POST https://api.alwaysdata.com/v1/site/${{ vars.ALWAYSDATA_SITE_CLIENT_ID }}/restart/

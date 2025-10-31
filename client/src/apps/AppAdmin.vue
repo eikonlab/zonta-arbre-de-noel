@@ -184,7 +184,9 @@ export default {
 
   methods: {
     async initializeSocket() {
-      this.socket = io("http://localhost:3001");
+      const API_URL =
+        import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+      this.socket = io(API_URL);
 
       this.socket.on("new-message", (message) => {
         // Add hidden property to new messages (default to visible)
@@ -209,7 +211,9 @@ export default {
     async loadMessages() {
       try {
         this.loading = true;
-        const response = await axios.get("http://localhost:3001/messages");
+        const API_URL =
+          import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+        const response = await axios.get(`${API_URL}/messages`);
         this.messages = response.data.map((message) => ({
           ...message,
           hidden: message.hidden || false,
@@ -229,8 +233,10 @@ export default {
     async toggleVisibility(message) {
       try {
         message.hidden = !message.hidden;
+        const API_URL =
+          import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
         // In a real app, you would send this update to the server
-        await axios.patch(`http://localhost:3001/messages/${message.id}`, {
+        await axios.patch(`${API_URL}/messages/${message.id}`, {
           hidden: message.hidden,
         });
       } catch (error) {
@@ -245,7 +251,9 @@ export default {
       if (!confirm("Êtes-vous sûr de vouloir supprimer ce message ?")) return;
 
       try {
-        await axios.delete(`http://localhost:3001/messages/${messageId}`);
+        const API_URL =
+          import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+        await axios.delete(`${API_URL}/messages/${messageId}`);
         this.messages = this.messages.filter((m) => m.id !== messageId);
       } catch (error) {
         console.error("Erreur lors de la suppression:", error);

@@ -45,7 +45,7 @@
 import { ref, onMounted } from "vue";
 import axios from "axios";
 
-const API_URL = "http://localhost:3001";
+const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 
 const author = ref("");
 const content = ref("");

@@ -1,37 +1,9 @@
 <template>
-  <component :is="currentApp" />
+  <router-view />
 </template>
 
 <script setup>
-import { computed } from "vue";
-import AppPublic from "./apps/AppPublic.vue";
-import AppAdmin from "./apps/AppAdmin.vue";
-import AppQR from "./apps/AppQR.vue";
-
-// Get the mode from environment variables or URL parameters
-const getMode = () => {
-  // Check URL parameters first
-  const urlParams = new URLSearchParams(window.location.search);
-  const modeParam = urlParams.get("mode");
-  if (modeParam) return modeParam;
-
-  // Check environment variables
-  return import.meta.env.VITE_APP_MODE || "public";
-};
-
-const mode = getMode();
-
-const currentApp = computed(() => {
-  switch (mode) {
-    case "admin":
-      return AppAdmin;
-    case "qr":
-      return AppQR;
-    case "public":
-    default:
-      return AppPublic;
-  }
-});
+// Router handles all the routing logic
 </script>
 
 <style>
