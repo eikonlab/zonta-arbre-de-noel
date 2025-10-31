@@ -1,7 +1,7 @@
 <template>
   <div class="admin-container">
     <header class="admin-header">
-      <h1>🛡️ Administration - Modération des Messages</h1>
+      <h1>Administration & Modération des Messages</h1>
       <div class="stats">
         <div class="stat-card">
           <span class="stat-number">{{ totalMessages }}</span>
@@ -343,13 +343,13 @@ export default {
 
 .stat-number {
   display: block;
-  font-size: 2.5em;
+  font-size: 1em;
   font-weight: bold;
   margin-bottom: 5px;
 }
 
 .stat-label {
-  font-size: 1.1em;
+  font-size: 1em;
   opacity: 0.9;
 }
 
