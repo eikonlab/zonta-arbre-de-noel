@@ -28,10 +28,11 @@
           required
         />
         <textarea
-          v-model="content"
+          v-model.trim="content"
           class="modern-input modern-textarea"
           placeholder="Votre message"
           rows="4"
+          maxlength="140"
           required
         ></textarea>
         <button type="submit" class="modern-btn" :disabled="!hasValidToken">

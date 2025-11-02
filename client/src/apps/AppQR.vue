@@ -4,7 +4,7 @@
     <div class="header">
       <p class="description">
         Scannez ce QR code pour accéder au mur de messages public. Le code se
-        renouvelle automatiquement chaque minute pour la sécurité.
+        renouvelle automatiquement toutes les 2 minutes pour la sécurité.
       </p>
     </div>
 
@@ -46,7 +46,7 @@
       <ol>
         <li>Scannez le QR code avec votre téléphone</li>
         <li>Vous serez redirigé vers le mur de messages</li>
-        <li>Le QR code se renouvelle automatiquement chaque minute</li>
+        <li>Le QR code se renouvelle automatiquement toutes les 2 minutes</li>
       </ol>
     </div>
   </div>
@@ -125,8 +125,8 @@ function updateCountdown() {
 onMounted(() => {
   fetchToken();
 
-  // Refresh token every minute
-  intervalId = setInterval(fetchToken, 60000);
+  // Refresh token every 2 minutes
+  intervalId = setInterval(fetchToken, 120000);
 
   // Update countdown every second
   countdownIntervalId = setInterval(updateCountdown, 1000);

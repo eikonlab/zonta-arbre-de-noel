@@ -24,7 +24,7 @@
           fill="none"
         />
 
-        <!-- Animated text following the path -->
+        <!-- Single animated text (right -> left, no overlap) -->
         <text
           font-family="Arial, sans-serif"
           font-size="40"
@@ -32,11 +32,11 @@
           font-weight="600"
           class="animated-text"
         >
-          <textPath :href="`#textPath${templateId}`" startOffset="-30%">
+          <textPath :href="`#textPath${templateId}`" startOffset="130%">
             {{ currentMessage?.content || "Chargement du message..." }}
             <animate
               attributeName="startOffset"
-              values="-30%;130%"
+              values="130%;-30%"
               :dur="`${animationDuration}s`"
               repeatCount="indefinite"
             />
@@ -45,35 +45,6 @@
               values="0;0.9;0.9;0"
               keyTimes="0;0.05;0.85;1"
               :dur="`${animationDuration}s`"
-              repeatCount="indefinite"
-            />
-          </textPath>
-        </text>
-
-        <!-- Second animated text (following behind) -->
-        <text
-          v-if="nextMessage"
-          font-family="Arial, sans-serif"
-          font-size="40"
-          :fill="currentTemplate.secondaryColor"
-          font-weight="600"
-          class="animated-text-2"
-        >
-          <textPath :href="`#textPath${templateId}`" startOffset="-30%">
-            {{ nextMessage.content }}
-            <animate
-              attributeName="startOffset"
-              values="-30%;130%"
-              :dur="`${animationDuration}s`"
-              :begin="`${animationDuration / 2}s`"
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="opacity"
-              values="0;0.7;0.7;0"
-              keyTimes="0;0.05;0.85;1"
-              :dur="`${animationDuration}s`"
-              :begin="`${animationDuration / 2}s`"
               repeatCount="indefinite"
             />
           </textPath>
@@ -352,10 +323,6 @@ onUnmounted(() => {
 }
 
 .animated-text {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
-}
-
-.animated-text-2 {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
