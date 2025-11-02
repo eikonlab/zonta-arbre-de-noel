@@ -69,7 +69,7 @@ let rafId = null;
 let lastTimestamp = 0;
 
 // Throttle rAF to reduce CPU load on Raspberry Pi (lower FPS for smoother pacing)
-const TARGET_FPS = 25;
+const TARGET_FPS = 50;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let accumulator = 0;
 
