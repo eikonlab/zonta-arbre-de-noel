@@ -68,7 +68,7 @@ let startOffsetValue = START_OFFSET_START;
 let rafId = null;
 let lastTimestamp = 0;
 
-// Throttle rAF to reduce CPU load on Raspberry Pi (30fps by default)
+// Throttle rAF to reduce CPU load on Raspberry Pi (lower FPS for smoother pacing)
 const TARGET_FPS = 25;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let accumulator = 0;
@@ -128,7 +128,7 @@ function updateMessage() {
   }
 }
 
-// rAF animation loop: scrolls text and advances messages at loop boundary (throttled)
+// Optionally, use setTimeout instead of rAF for more predictable pacing
 function animationLoop(ts) {
   if (!lastTimestamp) lastTimestamp = ts;
   const dt = ts - lastTimestamp;
@@ -158,7 +158,7 @@ function animationLoop(ts) {
     accumulator -= steps * FRAME_INTERVAL;
   }
 
-  rafId = requestAnimationFrame(animationLoop);
+  rafId = setTimeout(() => animationLoop(performance.now()), FRAME_INTERVAL);
 }
 
 function startAnimation() {
@@ -169,12 +169,12 @@ function startAnimation() {
   if (textPathEl.value) {
     textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
   }
-  rafId = requestAnimationFrame(animationLoop);
+  rafId = setTimeout(() => animationLoop(performance.now()), FRAME_INTERVAL);
 }
 
 function stopAnimation() {
   if (rafId) {
-    cancelAnimationFrame(rafId);
+    clearTimeout(rafId);
     rafId = null;
   }
   lastTimestamp = 0;
@@ -267,8 +267,8 @@ onUnmounted(() => {
   justify-content: center;
   width: 100%;
   height: 100vh;
-  /* Hint to the browser to isolate layout/paint of this subtree */
-  contain: strict;
+  /* Hint to browser for hardware acceleration */
+  will-change: transform;
 }
 
 .svg-container svg {
@@ -283,17 +283,19 @@ onUnmounted(() => {
   /* removed text drop-shadow for performance */
   /* filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1)); */
   text-rendering: optimizeSpeed;
+  /* Hint for hardware acceleration */
+  will-change: transform;
 }
 
 @media (max-width: 768px) {
   .svg-container svg text {
-    font-size: 18px;
+    font-size: 16px; /* slightly reduced for performance */
   }
 }
 
 @media (max-width: 480px) {
   .svg-container svg text {
-    font-size: 14px;
+    font-size: 12px; /* slightly reduced for performance */
   }
 }
 </style>
