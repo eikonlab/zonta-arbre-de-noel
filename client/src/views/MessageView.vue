@@ -7,6 +7,7 @@
         viewBox="0 0 1280 720"
         preserveAspectRatio="xMidYMid meet"
         xmlns="http://www.w3.org/2000/svg"
+        pointer-events="none"
       >
         <defs>
           <path :id="`textPath${templateId}`" :d="currentTemplate.path" />
@@ -18,31 +19,23 @@
           stroke="#333"
           stroke-width="2"
           fill="none"
+          shape-rendering="optimizeSpeed"
+          pointer-events="none"
         />
 
-        <!-- Single animated text (right -> left, no overlap) -->
+        <!-- JS-driven animated text (uses startOffset via rAF, no Vue reactivity per frame) -->
         <text
           font-family="Arial, sans-serif"
           font-size="40"
           :fill="currentTemplate.primaryColor"
           font-weight="600"
           class="animated-text"
+          text-rendering="optimizeSpeed"
+          pointer-events="none"
         >
-          <textPath :href="`#textPath${templateId}`" startOffset="130%">
+          <!-- remove reactive :startOffset, use a ref and setAttribute in rAF -->
+          <textPath :href="`#textPath${templateId}`" ref="textPathEl">
             {{ currentMessage?.content || "Chargement du message..." }}
-            <animate
-              attributeName="startOffset"
-              values="130%;-30%"
-              :dur="`${animationDuration}s`"
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="opacity"
-              values="0;0.9;0.9;0"
-              keyTimes="0;0.05;0.85;1"
-              :dur="`${animationDuration}s`"
-              repeatCount="indefinite"
-            />
           </textPath>
         </text>
       </svg>
@@ -59,18 +52,26 @@ import { messageTemplates, getTemplateById } from "../config/messageTemplates";
 
 const route = useRoute();
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
-const socket = io(API_URL);
+// Force websocket-only to reduce polling overhead on kiosk Chromium
+const socket = io(API_URL, { transports: ["websocket"] });
 
 const messages = ref([]);
 const currentMessage = ref(null);
 const nextMessage = ref(null);
-const countdown = ref(60);
 const animationDuration = 10; // seconds for text to travel across path
-let intervalId = null;
-let countdownId = null;
 
-// Set page title
-document.title = "Zonta - Message";
+// rAF-driven startOffset animation (percent along the path), DOM-driven to avoid Vue reactivity per frame
+const START_OFFSET_START = 130; // off-screen right
+const START_OFFSET_END = -30; // off-screen left
+const textPathEl = ref(null);
+let startOffsetValue = START_OFFSET_START;
+let rafId = null;
+let lastTimestamp = 0;
+
+// Throttle rAF to reduce CPU load on Raspberry Pi (30fps by default)
+const TARGET_FPS = 25;
+const FRAME_INTERVAL = 1000 / TARGET_FPS;
+let accumulator = 0;
 
 // Get template ID from route params
 const templateId = computed(() => {
@@ -96,65 +97,91 @@ const visibleMessages = computed(() => {
 function getRandomMessage() {
   const available = visibleMessages.value;
   if (available.length === 0) return null;
-
   const randomIndex = Math.floor(Math.random() * available.length);
   return available[randomIndex];
 }
 
-// Update current message and setup next one
-function updateMessage() {
-  currentMessage.value = getRandomMessage();
-  nextMessage.value = getRandomMessage();
-  countdown.value = animationDuration;
-
-  // Ensure next message is different from current
+// Ensure next != current (best-effort)
+function pickNextDifferent() {
+  let candidate = getRandomMessage();
   let attempts = 0;
   while (
-    nextMessage.value &&
+    candidate &&
     currentMessage.value &&
-    nextMessage.value.id === currentMessage.value.id &&
+    candidate.id === currentMessage.value.id &&
     attempts < 10
   ) {
-    nextMessage.value = getRandomMessage();
+    candidate = getRandomMessage();
     attempts++;
+  }
+  return candidate;
+}
+
+// Initialize messages
+function updateMessage() {
+  currentMessage.value = getRandomMessage();
+  nextMessage.value = pickNextDifferent();
+  // reset scroll position when message changes
+  startOffsetValue = START_OFFSET_START;
+  if (textPathEl.value) {
+    textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
   }
 }
 
-// Start continuous animation cycle
-function startAnimationCycle() {
-  // Clear existing intervals
-  if (intervalId) clearInterval(intervalId);
-  if (countdownId) clearInterval(countdownId);
+// rAF animation loop: scrolls text and advances messages at loop boundary (throttled)
+function animationLoop(ts) {
+  if (!lastTimestamp) lastTimestamp = ts;
+  const dt = ts - lastTimestamp;
+  lastTimestamp = ts;
 
-  // Update messages every animation duration
-  intervalId = setInterval(() => {
-    // Swap messages - next becomes current
-    currentMessage.value = nextMessage.value;
-    nextMessage.value = getRandomMessage();
+  accumulator += dt;
+  if (accumulator >= FRAME_INTERVAL) {
+    // move from 130% to -30% in 'animationDuration' seconds (total travel = 160%)
+    const totalTravel = START_OFFSET_START - START_OFFSET_END; // 160
+    const steps = Math.floor(accumulator / FRAME_INTERVAL);
+    const stepTime = steps * FRAME_INTERVAL;
+    const speedPerMs = totalTravel / (animationDuration * 1000);
+    startOffsetValue -= speedPerMs * stepTime;
 
-    // Ensure next message is different
-    let attempts = 0;
-    while (
-      nextMessage.value &&
-      currentMessage.value &&
-      nextMessage.value.id === currentMessage.value.id &&
-      attempts < 10
-    ) {
-      nextMessage.value = getRandomMessage();
-      attempts++;
+    if (startOffsetValue <= START_OFFSET_END) {
+      // advance messages when one pass completes
+      currentMessage.value = nextMessage.value;
+      nextMessage.value = pickNextDifferent();
+      startOffsetValue = START_OFFSET_START;
     }
-  }, animationDuration * 1000);
 
-  // Countdown for next message
-  countdownId = setInterval(() => {
-    countdown.value--;
-    if (countdown.value <= 0) {
-      countdown.value = animationDuration;
+    // Imperatively update the attribute (no Vue re-render)
+    if (textPathEl.value) {
+      textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
     }
-  }, 1000);
+
+    accumulator -= steps * FRAME_INTERVAL;
+  }
+
+  rafId = requestAnimationFrame(animationLoop);
 }
 
-// Format date
+function startAnimation() {
+  stopAnimation();
+  lastTimestamp = 0;
+  accumulator = 0;
+  // Ensure attribute is initialized even if rAF is delayed
+  if (textPathEl.value) {
+    textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
+  }
+  rafId = requestAnimationFrame(animationLoop);
+}
+
+function stopAnimation() {
+  if (rafId) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+  lastTimestamp = 0;
+  accumulator = 0;
+}
+
+// Format date (kept for potential future use)
 function formatDate(dateString) {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -181,9 +208,8 @@ async function loadMessages() {
 watch(
   () => route.params.id,
   () => {
-    // Restart animation cycle when template changes
     updateMessage();
-    startAnimationCycle();
+    startAnimation();
   }
 );
 
@@ -209,18 +235,16 @@ onMounted(async () => {
       updateMessage();
     }
     if (nextMessage.value && nextMessage.value.id === messageId) {
-      nextMessage.value = getRandomMessage();
+      nextMessage.value = pickNextDifferent();
     }
   });
 
-  // Start the animation cycle
-  updateMessage();
-  startAnimationCycle();
+  // Start the animation loop
+  startAnimation();
 });
 
 onUnmounted(() => {
-  if (intervalId) clearInterval(intervalId);
-  if (countdownId) clearInterval(countdownId);
+  stopAnimation();
   if (socket) socket.disconnect();
 });
 </script>
@@ -243,16 +267,22 @@ onUnmounted(() => {
   justify-content: center;
   width: 100%;
   height: 100vh;
+  /* Hint to the browser to isolate layout/paint of this subtree */
+  contain: strict;
 }
 
 .svg-container svg {
   max-width: 100%;
   max-height: 100%;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  /* removed drop-shadow filter for performance on low-powered devices */
+  /* filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1)); */
+  pointer-events: none;
 }
 
 .animated-text {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  /* removed text drop-shadow for performance */
+  /* filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1)); */
+  text-rendering: optimizeSpeed;
 }
 
 @media (max-width: 768px) {
