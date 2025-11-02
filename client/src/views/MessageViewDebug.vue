@@ -1,5 +1,9 @@
 <template>
-  <div class="message-display">
+  <div
+    class="message-display"
+    :style="{ background: currentTemplate.gradient }"
+  >
+    <div class="page-title">Message</div>
     <div class="svg-container">
       <svg
         width="100%"
@@ -46,6 +50,33 @@
           </textPath>
         </text>
       </svg>
+    </div>
+
+    <div class="message-info">
+      <div v-if="currentMessage" class="author-info">
+        <span class="author-name">{{ currentMessage.author }}</span>
+        <span class="message-date">{{
+          formatDate(currentMessage.createdAt)
+        }}</span>
+      </div>
+      <div class="timer">Prochain message dans : {{ countdown }}s</div>
+      <div class="animation-info">
+        Animation: {{ animationDuration }}s par message
+      </div>
+    </div>
+
+    <div class="navigation">
+      <div class="template-switcher">
+        <router-link
+          v-for="template in templates"
+          :key="template.id"
+          :to="`/message/${template.id}`"
+          class="template-btn"
+          :class="{ active: templateId === template.id }"
+        >
+          {{ template.name }}
+        </router-link>
+      </div>
     </div>
   </div>
 </template>
@@ -228,12 +259,10 @@ onUnmounted(() => {
 <style scoped>
 .message-display {
   min-height: 100vh;
-  background: white;
   display: flex;
   flex-direction: column;
+  padding: 20px;
   transition: background 0.5s ease;
-  padding: 0;
-  margin: 0;
 }
 
 .svg-container {
@@ -241,8 +270,12 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100vh;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  margin-bottom: 20px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  min-height: 400px;
 }
 
 .svg-container svg {
@@ -251,11 +284,135 @@ onUnmounted(() => {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
+.message-info {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.author-info {
+  margin-bottom: 15px;
+}
+
+.author-name {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: #333;
+  margin-right: 15px;
+}
+
+.message-date {
+  color: #666;
+  font-size: 1em;
+}
+
+.timer {
+  font-size: 1.1em;
+  color: #764ba2;
+  font-weight: 600;
+}
+
+.animation-info {
+  font-size: 0.9em;
+  color: #999;
+  font-style: italic;
+  margin-top: 5px;
+}
+
 .animated-text {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
+.navigation {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  text-decoration: none;
+  padding: 15px 25px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 150px;
+}
+
+.nav-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  background: white;
+}
+
+.template-switcher {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.template-btn {
+  background: rgba(255, 255, 255, 0.7);
+  color: #333;
+  text-decoration: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9em;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.template-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.template-btn.active {
+  background: white;
+  color: #764ba2;
+  box-shadow: 0 5px 20px rgba(118, 75, 162, 0.3);
+  font-weight: 700;
+}
+
 @media (max-width: 768px) {
+  .message-display {
+    padding: 10px;
+  }
+
+  .svg-container {
+    padding: 20px;
+    min-height: 300px;
+  }
+
+  .navigation {
+    flex-direction: column;
+  }
+
+  .nav-btn {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .template-switcher {
+    width: 100%;
+    justify-content: center;
+  }
+
   .svg-container svg text {
     font-size: 18px;
   }
@@ -265,5 +422,24 @@ onUnmounted(() => {
   .svg-container svg text {
     font-size: 14px;
   }
+
+  .template-btn {
+    font-size: 0.8em;
+    padding: 8px 12px;
+  }
+}
+
+.page-title {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
 }
 </style>
