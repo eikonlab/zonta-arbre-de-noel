@@ -64,20 +64,6 @@
         Animation: {{ animationDuration }}s par message
       </div>
     </div>
-
-    <div class="navigation">
-      <div class="template-switcher">
-        <router-link
-          v-for="template in templates"
-          :key="template.id"
-          :to="`/message/${template.id}`"
-          class="template-btn"
-          :class="{ active: templateId === template.id }"
-        >
-          {{ template.name }}
-        </router-link>
-      </div>
-    </div>
   </div>
 </template>
 

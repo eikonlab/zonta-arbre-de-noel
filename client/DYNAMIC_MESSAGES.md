@@ -47,9 +47,6 @@ export const messageTemplates = [
     name: "Template 7", // Display name
     description: "Your description",
     path: "M0 360L1280 360", // SVG path data
-    gradient: "linear-gradient(135deg, #color1 0%, #color2 100%)",
-    primaryColor: "#color1", // First text color
-    secondaryColor: "#color2", // Second text color
   },
 ];
 ```
@@ -60,9 +57,22 @@ export const messageTemplates = [
 - **name**: Display name shown in template switcher
 - **description**: Brief description of the path style
 - **path**: SVG path data (d attribute)
-- **gradient**: CSS gradient for background
-- **primaryColor**: Color for the primary animated text
-- **secondaryColor**: Color for the secondary animated text
+
+### Message Colors:
+
+Messages are displayed in random colors from a predefined palette. To customize the color palette, edit the `messageColors` array in `messageTemplates.js`:
+
+```javascript
+export const messageColors = [
+  "#2563eb", // Blue
+  "#dc2626", // Red
+  "#16a34a", // Green
+  "#9333ea", // Purple
+  "#ea580c", // Orange
+];
+```
+
+Each message receives a random color from this array when it's displayed.
 
 ## Features
 
@@ -105,9 +115,9 @@ const animationDuration = 10; // seconds for text to travel across path
 Each template in `messageTemplates.js` supports:
 
 - Custom SVG paths
-- Custom color schemes
-- Unique gradients
-- Individual styling
+- Unique styling
+
+Message colors are randomly assigned from the `messageColors` array, ensuring visual variety regardless of the template used.
 
 ## Migrating from Old System
 
@@ -152,9 +162,6 @@ routes: [{ path: "/message/:id", component: MessageView, props: true }];
   name: "Wave Pattern",
   description: "Smooth sine wave",
   path: "M0 360 Q 320 180 640 360 T 1280 360",
-  gradient: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
-  primaryColor: "#a8edea",
-  secondaryColor: "#fed6e3",
 }
 ```
 

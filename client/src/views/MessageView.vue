@@ -26,8 +26,8 @@
         <!-- JS-driven animated text (uses startOffset via rAF, no Vue reactivity per frame) -->
         <text
           font-family="Arial, sans-serif"
-          font-size="40"
-          :fill="currentTemplate.primaryColor"
+          font-size="60"
+          :fill="currentMessageColor"
           font-weight="600"
           class="animated-text"
           text-rendering="optimizeSpeed"
@@ -48,7 +48,11 @@ import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 import { io } from "socket.io-client";
 import axios from "axios";
-import { messageTemplates, getTemplateById } from "../config/messageTemplates";
+import {
+  messageTemplates,
+  getTemplateById,
+  getRandomColor,
+} from "../config/messageTemplates";
 
 const route = useRoute();
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
@@ -58,7 +62,9 @@ const socket = io(API_URL, { transports: ["websocket"] });
 const messages = ref([]);
 const currentMessage = ref(null);
 const nextMessage = ref(null);
-const animationDuration = 10; // seconds for text to travel across path
+const currentMessageColor = ref("#2563eb"); // Default color
+const animationSpeed = 180; // px per second (adjust for desired speed)
+let animationDuration = 10; // will be dynamically set per message
 
 // rAF-driven startOffset animation (percent along the path), DOM-driven to avoid Vue reactivity per frame
 const START_OFFSET_START = 130; // off-screen right
@@ -117,14 +123,41 @@ function pickNextDifferent() {
   return candidate;
 }
 
+let textLengthPx = 0; // store measured text length
+
+// Calculate animation duration based on text length
+function computeAnimationDuration() {
+  if (!textPathEl.value || !currentMessage.value) return;
+  textLengthPx = textPathEl.value.getComputedTextLength();
+  const svg = textPathEl.value.ownerSVGElement;
+  const pathEl = svg.querySelector(`#textPath${templateId.value}`);
+  const pathLength = pathEl ? pathEl.getTotalLength() : 1280;
+
+  // The percent range the animation covers
+  const percentRange = START_OFFSET_START - START_OFFSET_END; // 160%
+  // The pixel range the text must travel to be fully out of view
+  const pixelRange = pathLength + textLengthPx;
+  // How many percent per pixel
+  const percentPerPixel = percentRange / pixelRange;
+  // Duration = pixelRange / animationSpeed (seconds)
+  animationDuration = pixelRange / animationSpeed;
+  // Store for use in animationLoop
+  computeAnimationDuration.percentPerPixel = percentPerPixel;
+  computeAnimationDuration.textLengthPercent = textLengthPx * percentPerPixel;
+}
+
 // Initialize messages
 function updateMessage() {
   currentMessage.value = getRandomMessage();
   nextMessage.value = pickNextDifferent();
-  // reset scroll position when message changes
+  currentMessageColor.value = getRandomColor(); // Assign random color
   startOffsetValue = START_OFFSET_START;
   if (textPathEl.value) {
     textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
+    // Wait for next tick to ensure DOM is updated before measuring
+    setTimeout(() => {
+      computeAnimationDuration();
+    }, 0);
   }
 }
 
@@ -136,21 +169,33 @@ function animationLoop(ts) {
 
   accumulator += dt;
   if (accumulator >= FRAME_INTERVAL) {
-    // move from 130% to -30% in 'animationDuration' seconds (total travel = 160%)
-    const totalTravel = START_OFFSET_START - START_OFFSET_END; // 160
+    // Use percentPerPixel to move the text at a constant pixel speed
     const steps = Math.floor(accumulator / FRAME_INTERVAL);
     const stepTime = steps * FRAME_INTERVAL;
-    const speedPerMs = totalTravel / (animationDuration * 1000);
-    startOffsetValue -= speedPerMs * stepTime;
+    // Pixels to move in this frame
+    const pixelsToMove = (animationSpeed * stepTime) / 1000;
+    // Convert to percent
+    const percentToMove =
+      pixelsToMove * (computeAnimationDuration.percentPerPixel || 1);
+    startOffsetValue -= percentToMove;
 
-    if (startOffsetValue <= START_OFFSET_END) {
-      // advance messages when one pass completes
+    // Only switch when the entire text is out of view (left edge)
+    const textFullyOutThreshold =
+      START_OFFSET_END - (computeAnimationDuration.textLengthPercent || 0);
+
+    if (startOffsetValue <= textFullyOutThreshold) {
       currentMessage.value = nextMessage.value;
       nextMessage.value = pickNextDifferent();
+      currentMessageColor.value = getRandomColor(); // Assign new random color
       startOffsetValue = START_OFFSET_START;
+      if (textPathEl.value) {
+        textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
+        setTimeout(() => {
+          computeAnimationDuration();
+        }, 0);
+      }
     }
 
-    // Imperatively update the attribute (no Vue re-render)
     if (textPathEl.value) {
       textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
     }
@@ -241,6 +286,10 @@ onMounted(async () => {
 
   // Start the animation loop
   startAnimation();
+  // Compute initial duration after DOM is ready
+  setTimeout(() => {
+    computeAnimationDuration();
+  }, 0);
 });
 
 onUnmounted(() => {
@@ -285,17 +334,5 @@ onUnmounted(() => {
   text-rendering: optimizeSpeed;
   /* Hint for hardware acceleration */
   will-change: transform;
-}
-
-@media (max-width: 768px) {
-  .svg-container svg text {
-    font-size: 16px; /* slightly reduced for performance */
-  }
-}
-
-@media (max-width: 480px) {
-  .svg-container svg text {
-    font-size: 12px; /* slightly reduced for performance */
-  }
 }
 </style>
