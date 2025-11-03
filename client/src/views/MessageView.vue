@@ -63,12 +63,14 @@ const messages = ref([]);
 const currentMessage = ref(null);
 const nextMessage = ref(null);
 const currentMessageColor = ref("#2563eb"); // Default color
-const animationSpeed = 180; // px per second (adjust for desired speed)
-let animationDuration = 10; // will be dynamically set per message
+const animationSpeed = 120; // px per second (was 180, now slower)
+
+// Set page title
+document.title = "Zonta - Ecran";
 
 // rAF-driven startOffset animation (percent along the path), DOM-driven to avoid Vue reactivity per frame
-const START_OFFSET_START = 130; // off-screen right
-const START_OFFSET_END = -30; // off-screen left
+const START_OFFSET_START = 100; // off-screen right
+const START_OFFSET_END = 0; // off-screen left
 const textPathEl = ref(null);
 let startOffsetValue = START_OFFSET_START;
 let rafId = null;
@@ -125,24 +127,23 @@ function pickNextDifferent() {
 
 let textLengthPx = 0; // store measured text length
 
-// Calculate animation duration based on text length
+// Calculate percent-per-pixel for the path, independent of text length
 function computeAnimationDuration() {
-  if (!textPathEl.value || !currentMessage.value) return;
-  textLengthPx = textPathEl.value.getComputedTextLength();
+  if (!textPathEl.value) return;
   const svg = textPathEl.value.ownerSVGElement;
   const pathEl = svg.querySelector(`#textPath${templateId.value}`);
   const pathLength = pathEl ? pathEl.getTotalLength() : 1280;
 
   // The percent range the animation covers
   const percentRange = START_OFFSET_START - START_OFFSET_END; // 160%
-  // The pixel range the text must travel to be fully out of view
-  const pixelRange = pathLength + textLengthPx;
+  // Only use pathLength for pixel range to keep speed constant
+  textLengthPx = textPathEl.value.getComputedTextLength();
+  const pixelRange = pathLength;
   // How many percent per pixel
   const percentPerPixel = percentRange / pixelRange;
-  // Duration = pixelRange / animationSpeed (seconds)
-  animationDuration = pixelRange / animationSpeed;
   // Store for use in animationLoop
   computeAnimationDuration.percentPerPixel = percentPerPixel;
+  // For threshold, still use textLengthPx to know when text is fully out
   computeAnimationDuration.textLengthPercent = textLengthPx * percentPerPixel;
 }
 
@@ -172,7 +173,7 @@ function animationLoop(ts) {
     // Use percentPerPixel to move the text at a constant pixel speed
     const steps = Math.floor(accumulator / FRAME_INTERVAL);
     const stepTime = steps * FRAME_INTERVAL;
-    // Pixels to move in this frame
+    // Pixels to move in this frame (always constant speed)
     const pixelsToMove = (animationSpeed * stepTime) / 1000;
     // Convert to percent
     const percentToMove =
@@ -184,16 +185,20 @@ function animationLoop(ts) {
       START_OFFSET_END - (computeAnimationDuration.textLengthPercent || 0);
 
     if (startOffsetValue <= textFullyOutThreshold) {
-      currentMessage.value = nextMessage.value;
-      nextMessage.value = pickNextDifferent();
-      currentMessageColor.value = getRandomColor(); // Assign new random color
-      startOffsetValue = START_OFFSET_START;
-      if (textPathEl.value) {
-        textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
-        setTimeout(() => {
-          computeAnimationDuration();
-        }, 0);
-      }
+      // Add a minimal pause before switching to the next message
+      setTimeout(() => {
+        currentMessage.value = nextMessage.value;
+        nextMessage.value = pickNextDifferent();
+        currentMessageColor.value = getRandomColor(); // Assign new random color
+        startOffsetValue = START_OFFSET_START;
+        if (textPathEl.value) {
+          textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
+          setTimeout(() => {
+            computeAnimationDuration();
+          }, 0);
+        }
+      }, 50); // minimal pause between messages
+      // Do not return, let the animation loop continue
     }
 
     if (textPathEl.value) {
