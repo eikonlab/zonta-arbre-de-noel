@@ -4,7 +4,11 @@
     <div class="header">
       <p class="description">
         Scannez ce QR code pour accéder au mur de messages public. Le code se
-        renouvelle automatiquement toutes les 2 minutes pour la sécurité.
+        renouvelle automatiquement toutes les
+        {{ tokenExpiryMinutes }} minute{{
+          tokenExpiryMinutes > 1 ? "s" : ""
+        }}
+        pour la sécurité.
       </p>
     </div>
 
@@ -46,19 +50,25 @@
       <ol>
         <li>Scannez le QR code avec votre téléphone</li>
         <li>Vous serez redirigé vers le mur de messages</li>
-        <li>Le QR code se renouvelle automatiquement toutes les 2 minutes</li>
+        <li>
+          Le QR code se renouvelle automatiquement toutes les
+          {{ tokenExpiryMinutes }} minute{{ tokenExpiryMinutes > 1 ? "s" : "" }}
+        </li>
       </ol>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import QRCode from "qrcode";
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 const CLIENT_URL = import.meta.env.VITE_CLIENT_URL || window.location.origin;
+
+// Refresh 5 seconds before token expires to avoid edge cases
+const REFRESH_BUFFER_MS = 5000;
 
 const loading = ref(true);
 const error = ref("");
@@ -67,12 +77,18 @@ const qrCodeDataUrl = ref("");
 const currentUrl = ref("");
 const expiresAt = ref(null);
 const timeUntilExpiry = ref("");
+const tokenExpiryMs = ref(120000); // Default, will be updated from server
 
 let intervalId = null;
 let countdownIntervalId = null;
 
 // Set page title
 document.title = "Zonta - QR Code";
+
+// Computed property for display
+const tokenExpiryMinutes = computed(() => {
+  return Math.floor(tokenExpiryMs.value / 60000);
+});
 
 async function fetchToken() {
   try {
@@ -82,6 +98,23 @@ async function fetchToken() {
     const response = await axios.get(`${API_URL}/api/current-token`);
     currentToken.value = response.data.token;
     expiresAt.value = new Date(response.data.expiresAt);
+
+    // Update token expiry duration from server
+    if (response.data.expiryMs) {
+      tokenExpiryMs.value = response.data.expiryMs;
+
+      // Reset interval with new timing (refresh 5s before expiry)
+      if (intervalId) clearInterval(intervalId);
+      const refreshInterval = Math.max(
+        tokenExpiryMs.value - REFRESH_BUFFER_MS,
+        1000
+      );
+      intervalId = setInterval(fetchToken, refreshInterval);
+
+      console.log(
+        `Token expires in ${tokenExpiryMs.value}ms, will refresh in ${refreshInterval}ms`
+      );
+    }
 
     // Generate URL with token
     currentUrl.value = `${CLIENT_URL}?token=${currentToken.value}`;
@@ -124,9 +157,6 @@ function updateCountdown() {
 
 onMounted(() => {
   fetchToken();
-
-  // Refresh token every 2 minutes
-  intervalId = setInterval(fetchToken, 120000);
 
   // Update countdown every second
   countdownIntervalId = setInterval(updateCountdown, 1000);

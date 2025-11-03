@@ -14,6 +14,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Token management system
+const TOKEN_EXPIRY_MS = parseInt(process.env.TOKEN_EXPIRY_MS) || 120000;
 let currentToken = '';
 let tokenTimestamp = 0;
 
@@ -23,11 +24,11 @@ function generateToken() {
 
 function getCurrentToken() {
   const now = Date.now();
-  // Check if we need to generate a new token (every minute = 60000ms)
-  if (now - tokenTimestamp > 60000) {
+  // Check if we need to generate a new token using env variable
+  if (now - tokenTimestamp > TOKEN_EXPIRY_MS) {
     currentToken = generateToken();
     tokenTimestamp = now;
-    console.log(`New token generated: ${currentToken}`);
+    console.log(`New token generated: ${currentToken} (expires in ${TOKEN_EXPIRY_MS}ms)`);
   }
   return currentToken;
 }
@@ -40,7 +41,8 @@ function isValidToken(token) {
 app.get('/api/current-token', (req, res) => {
   res.json({
     token: getCurrentToken(),
-    expiresAt: new Date(tokenTimestamp + 60000).toISOString()
+    expiresAt: new Date(tokenTimestamp + TOKEN_EXPIRY_MS).toISOString(),
+    expiryMs: TOKEN_EXPIRY_MS
   });
 });
 
@@ -164,11 +166,9 @@ const OFF_TOPIC_PATTERNS = [
   /provocantes?/i, // culpabilisation
   /se faire respecter/i, // culpabilisation
   /trop faibles?/i, // jugement moral
-  /je me suis jamais laissé faire/i, // jugement moral
-  /mon ex me tape sur les nerfs/i, // banalisation
-  /vaisselle/i, // banalisation
-  /ce n'est pas de la violence/i, // minimisation
-  /c'est normal/i // minimisation
+  /je me suis jamais laissé faire
+  / ce n'est pas de la violence/i, // minimisation
+  / c'est normal/i // minimisation
 ];
 
 const TOXIC_PATTERNS = [
