@@ -1,5 +1,8 @@
 <template>
-  <div class="message-display">
+  <div
+    class="message-display"
+    :style="{ backgroundColor: currentMessageColor }"
+  >
     <div class="canvas-container">
       <canvas ref="canvasEl"></canvas>
     </div>
@@ -257,7 +260,8 @@ function layoutText(str) {
 function drawPathLine() {
   if (samples.length < 2) return;
   ctx.save();
-  ctx.strokeStyle = "#333";
+  // 50% opacity line
+  ctx.strokeStyle = "rgba(51, 51, 51, 0.5)";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(samples[0].x, samples[0].y);
@@ -309,7 +313,8 @@ function renderFrame(dtMs) {
 
   // Draw text glyphs along path
   ctx.save();
-  ctx.fillStyle = currentMessageColor.value;
+  // Text is white; background color is bound to currentMessageColor with CSS transition
+  ctx.fillStyle = "#fff";
   ctx.font = `${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -473,10 +478,10 @@ onUnmounted(() => {
 <style scoped>
 .message-display {
   min-height: 100vh;
-  background: white;
+  /* background color is now bound dynamically; keep a smooth transition */
+  transition: background-color 400ms ease;
   display: flex;
   flex-direction: column;
-  transition: background 0.5s ease;
   padding: 0;
   margin: 0;
 }
