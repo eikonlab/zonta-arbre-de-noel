@@ -166,9 +166,9 @@ const OFF_TOPIC_PATTERNS = [
   /provocantes?/i, // culpabilisation
   /se faire respecter/i, // culpabilisation
   /trop faibles?/i, // jugement moral
-  /je me suis jamais laissé faire
-  / ce n'est pas de la violence/i, // minimisation
-  / c'est normal/i // minimisation
+  /je me suis jamais laissé faire/i,
+  /ce n'est pas de la violence/i, // minimisation
+  /c'est normal/i // minimisation
 ];
 
 const TOXIC_PATTERNS = [
