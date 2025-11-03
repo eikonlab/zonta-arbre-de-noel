@@ -1,44 +1,7 @@
 <template>
   <div class="message-display">
-    <div class="svg-container">
-      <svg
-        width="100%"
-        height="100%"
-        viewBox="0 0 1280 720"
-        preserveAspectRatio="xMidYMid meet"
-        xmlns="http://www.w3.org/2000/svg"
-        pointer-events="none"
-      >
-        <defs>
-          <path :id="`textPath${templateId}`" :d="currentTemplate.path" />
-        </defs>
-
-        <!-- The path line (visible) -->
-        <path
-          :d="currentTemplate.path"
-          stroke="#333"
-          stroke-width="2"
-          fill="none"
-          shape-rendering="optimizeSpeed"
-          pointer-events="none"
-        />
-
-        <!-- JS-driven animated text (uses startOffset via rAF, no Vue reactivity per frame) -->
-        <text
-          font-family="Arial, sans-serif"
-          font-size="60"
-          :fill="currentMessageColor"
-          font-weight="600"
-          class="animated-text"
-          text-rendering="optimizeSpeed"
-          pointer-events="none"
-        >
-          <!-- remove reactive :startOffset, use a ref and setAttribute in rAF -->
-          <textPath :href="`#textPath${templateId}`" ref="textPathEl">
-            {{ currentMessage?.content || "Chargement du message..." }}
-          </textPath>
-        </text>
-      </svg>
+    <div class="canvas-container">
+      <canvas ref="canvasEl"></canvas>
     </div>
   </div>
 </template>
@@ -56,52 +19,29 @@ import {
 
 const route = useRoute();
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
-// Force websocket-only to reduce polling overhead on kiosk Chromium
 const socket = io(API_URL, { transports: ["websocket"] });
 
+// Messages/state
 const messages = ref([]);
 const currentMessage = ref(null);
 const nextMessage = ref(null);
-const currentMessageColor = ref("#2563eb"); // Default color
-const animationSpeed = 120; // px per second (was 180, now slower)
+const currentMessageColor = ref("#2563eb");
+const animationSpeed = 120; // px/s constant speed
 
-// Set page title
+// Page title
 document.title = "Zonta - Ecran";
 
-// rAF-driven startOffset animation (percent along the path), DOM-driven to avoid Vue reactivity per frame
-const START_OFFSET_START = 100; // off-screen right
-const START_OFFSET_END = 0; // off-screen left
-const textPathEl = ref(null);
-let startOffsetValue = START_OFFSET_START;
-let rafId = null;
-let lastTimestamp = 0;
-
-// Throttle rAF to reduce CPU load on Raspberry Pi (lower FPS for smoother pacing)
-const TARGET_FPS = 50;
-const FRAME_INTERVAL = 1000 / TARGET_FPS;
-let accumulator = 0;
-
-// Get template ID from route params
-const templateId = computed(() => {
-  return parseInt(route.params.id) || 1;
-});
-
-// Get current template configuration
-const currentTemplate = computed(() => {
-  return getTemplateById(templateId.value);
-});
-
-// All available templates for switcher
+// Templates
+const templateId = computed(() => parseInt(route.params.id) || 1);
+const currentTemplate = computed(() => getTemplateById(templateId.value));
 const templates = messageTemplates;
 
-// Get visible messages only
-const visibleMessages = computed(() => {
-  return messages.value.filter(
+const visibleMessages = computed(() =>
+  messages.value.filter(
     (msg) => !msg.hidden && msg.content && msg.content.trim().length > 0
-  );
-});
+  )
+);
 
-// Get random message
 function getRandomMessage() {
   const available = visibleMessages.value;
   if (available.length === 0) return null;
@@ -109,7 +49,6 @@ function getRandomMessage() {
   return available[randomIndex];
 }
 
-// Ensure next != current (best-effort)
 function pickNextDifferent() {
   let candidate = getRandomMessage();
   let attempts = 0;
@@ -125,86 +64,311 @@ function pickNextDifferent() {
   return candidate;
 }
 
-let textLengthPx = 0; // store measured text length
+// Canvas + rendering
+const canvasEl = ref(null);
+let ctx = null;
 
-// Calculate percent-per-pixel for the path, independent of text length
-function computeAnimationDuration() {
-  if (!textPathEl.value) return;
-  const svg = textPathEl.value.ownerSVGElement;
-  const pathEl = svg.querySelector(`#textPath${templateId.value}`);
-  const pathLength = pathEl ? pathEl.getTotalLength() : 1280;
+// Design space (paths are authored in this space)
+const DESIGN_W = 1280;
+const DESIGN_H = 720;
 
-  // The percent range the animation covers
-  const percentRange = START_OFFSET_START - START_OFFSET_END; // 160%
-  // Only use pathLength for pixel range to keep speed constant
-  textLengthPx = textPathEl.value.getComputedTextLength();
-  const pixelRange = pathLength;
-  // How many percent per pixel
-  const percentPerPixel = percentRange / pixelRange;
-  // Store for use in animationLoop
-  computeAnimationDuration.percentPerPixel = percentPerPixel;
-  // For threshold, still use textLengthPx to know when text is fully out
-  computeAnimationDuration.textLengthPercent = textLengthPx * percentPerPixel;
+// Viewport mapping
+let view = {
+  cssW: 0,
+  cssH: 0,
+  dpr: 1,
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+};
+
+// Path samples in screen (CSS) pixels
+let samples = []; // [{ s, x, y, angle }]
+let pathLength = 0;
+
+// Text layout
+let glyphs = []; // [{ ch, w, offs }]
+let textTotalWidth = 0;
+
+// Animation
+let offsetS = 0; // first glyph offset along path (CSS px)
+const TARGET_FPS = 50;
+const FRAME_INTERVAL = 1000 / TARGET_FPS;
+let rafId = null;
+let lastTs = 0;
+let accumulator = 0;
+
+// Font settings
+const FONT_SIZE = 60; // px
+const FONT_FAMILY = "Arial, sans-serif";
+const FONT_WEIGHT = 600;
+const LETTER_SPACING = 2; // px additional spacing per glyph
+const ROTATE_GLYPHS = true; // set false to not rotate characters (faster)
+
+// Utils: quadratic Bezier
+function qPoint(p0, p1, p2, t) {
+  const mt = 1 - t;
+  return {
+    x: mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x,
+    y: mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y,
+  };
+}
+function qDeriv(p0, p1, p2, t) {
+  return {
+    x: 2 * (1 - t) * (p1.x - p0.x) + 2 * t * (p2.x - p1.x),
+    y: 2 * (1 - t) * (p1.y - p0.y) + 2 * t * (p2.y - p1.y),
+  };
+}
+function dist(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.hypot(dx, dy);
+}
+function approxQuadLen(p0, p1, p2) {
+  // simple 10-subdivision approximation
+  let len = 0;
+  let prev = p0;
+  for (let i = 1; i <= 10; i++) {
+    const t = i / 10;
+    const pt = qPoint(p0, p1, p2, t);
+    len += dist(prev, pt);
+    prev = pt;
+  }
+  return len;
 }
 
-// Initialize messages
-function updateMessage() {
-  currentMessage.value = getRandomMessage();
-  nextMessage.value = pickNextDifferent();
-  currentMessageColor.value = getRandomColor(); // Assign random color
-  startOffsetValue = START_OFFSET_START;
-  if (textPathEl.value) {
-    textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
-    // Wait for next tick to ensure DOM is updated before measuring
-    setTimeout(() => {
-      computeAnimationDuration();
-    }, 0);
+// Parse minimal SVG path with absolute M and Q only
+function parseMQPath(d) {
+  const tokens = d.match(/[MQ]|-?\d*\.?\d+/gi) || [];
+  const segs = [];
+  let i = 0;
+  let cur = { x: 0, y: 0 };
+  while (i < tokens.length) {
+    const tok = tokens[i++];
+    if (tok === "M" || tok === "m") {
+      const x = parseFloat(tokens[i++]);
+      const y = parseFloat(tokens[i++]);
+      cur = { x, y };
+    } else if (tok === "Q" || tok === "q") {
+      const cx = parseFloat(tokens[i++]);
+      const cy = parseFloat(tokens[i++]);
+      const x = parseFloat(tokens[i++]);
+      const y = parseFloat(tokens[i++]);
+      segs.push({ p0: { ...cur }, p1: { x: cx, y: cy }, p2: { x, y } });
+      cur = { x, y };
+    } else {
+      // ignore unknown tokens
+    }
+  }
+  return segs;
+}
+
+function computeViewport() {
+  const canvas = canvasEl.value;
+  if (!canvas) return;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  view.cssW = Math.max(1, Math.floor(rect.width));
+  view.cssH = Math.max(1, Math.floor(rect.height));
+  view.dpr = window.devicePixelRatio || 1;
+
+  // Resize backing store
+  canvas.width = Math.floor(view.cssW * view.dpr);
+  canvas.height = Math.floor(view.cssH * view.dpr);
+  canvas.style.width = view.cssW + "px";
+  canvas.style.height = view.cssH + "px";
+
+  // Context
+  ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(view.dpr, view.dpr); // draw in CSS pixels
+
+  // Compute "meet" aspect ratio mapping from design (1280x720) to CSS viewport
+  view.scale = Math.min(view.cssW / DESIGN_W, view.cssH / DESIGN_H);
+  view.offsetX = (view.cssW - DESIGN_W * view.scale) / 2;
+  view.offsetY = (view.cssH - DESIGN_H * view.scale) / 2;
+}
+
+function buildSamples() {
+  samples = [];
+  pathLength = 0;
+
+  const segments = parseMQPath(currentTemplate.value.path);
+  let lastPt = null;
+
+  for (const seg of segments) {
+    const p0 = seg.p0;
+    const p1 = seg.p1;
+    const p2 = seg.p2;
+
+    // Estimate segment length in design space
+    const L = approxQuadLen(p0, p1, p2);
+
+    // Decide sample count for ~8px resolution in CSS pixels after scaling
+    const targetStepCss = 8;
+    const targetStepDesign = targetStepCss / Math.max(view.scale, 1e-6);
+    const steps = Math.max(8, Math.ceil(L / targetStepDesign));
+
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const pt = qPoint(p0, p1, p2, t);
+      const dpt = qDeriv(p0, p1, p2, t);
+
+      // Map to CSS pixel space
+      const x = view.offsetX + pt.x * view.scale;
+      const y = view.offsetY + pt.y * view.scale;
+      const angle = Math.atan2(dpt.y, dpt.x);
+
+      if (lastPt) {
+        pathLength += Math.hypot(x - lastPt.x, y - lastPt.y);
+      }
+      samples.push({ s: pathLength, x, y, angle });
+      lastPt = { x, y };
+    }
   }
 }
 
-// Optionally, use setTimeout instead of rAF for more predictable pacing
+function layoutText(str) {
+  glyphs = [];
+  textTotalWidth = 0;
+
+  // Configure font in CSS pixel space
+  ctx.font = `${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const content = str && str.length ? str : "Chargement du message...";
+  for (let i = 0; i < content.length; i++) {
+    const ch = content[i];
+    const w = ctx.measureText(ch).width;
+    glyphs.push({ ch, w });
+  }
+
+  // Precompute cumulative offset for each glyph (center)
+  let pos = 0;
+  for (let i = 0; i < glyphs.length; i++) {
+    const half = glyphs[i].w / 2;
+    const center = pos + half;
+    glyphs[i].offs = center;
+    pos += glyphs[i].w + LETTER_SPACING;
+  }
+  textTotalWidth = pos - LETTER_SPACING; // last char doesn't add spacing
+}
+
+function drawPathLine() {
+  if (samples.length < 2) return;
+  ctx.save();
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(samples[0].x, samples[0].y);
+  for (let i = 1; i < samples.length; i++) {
+    ctx.lineTo(samples[i].x, samples[i].y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Find interpolated point given arc-length s (binary search)
+function sampleAtS(s) {
+  if (samples.length === 0) return null;
+  if (s <= 0) return samples[0];
+  if (s >= pathLength) return samples[samples.length - 1];
+
+  let lo = 0;
+  let hi = samples.length - 1;
+  while (lo + 1 < hi) {
+    const mid = (lo + hi) >> 1;
+    if (samples[mid].s < s) lo = mid;
+    else hi = mid;
+  }
+  const a = samples[lo];
+  const b = samples[hi];
+  const t = (s - a.s) / Math.max(b.s - a.s, 1e-6);
+  const x = a.x + (b.x - a.x) * t;
+  const y = a.y + (b.y - a.y) * t;
+  // Angle: simple lerp is fine for small steps
+  let angle = a.angle + (b.angle - a.angle) * t;
+  return { x, y, angle };
+}
+
+function clearCanvas() {
+  const canvas = canvasEl.value;
+  if (!canvas) return;
+  // Clear using identity transform to cover the full backing store
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+function renderFrame(dtMs) {
+  clearCanvas();
+
+  // Optional: draw path line
+  drawPathLine();
+
+  // Draw text glyphs along path
+  ctx.save();
+  ctx.fillStyle = currentMessageColor.value;
+  ctx.font = `${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // Early out if nothing to draw
+  if (glyphs.length === 0 || samples.length === 0) {
+    ctx.restore();
+    return;
+  }
+
+  // Move offset
+  const pixelsToMove = (animationSpeed * dtMs) / 1000;
+  offsetS -= pixelsToMove;
+
+  // Render glyphs
+  for (let i = 0; i < glyphs.length; i++) {
+    const posS = offsetS + glyphs[i].offs;
+    if (posS < 0 || posS > pathLength) continue;
+    const pt = sampleAtS(posS);
+    if (!pt) continue;
+
+    ctx.save();
+    if (ROTATE_GLYPHS) {
+      ctx.translate(pt.x, pt.y);
+      ctx.rotate(pt.angle);
+      ctx.fillText(glyphs[i].ch, 0, 0);
+    } else {
+      ctx.fillText(glyphs[i].ch, pt.x, pt.y);
+    }
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  // If fully out to the left, switch to next
+  if (offsetS + textTotalWidth <= 0) {
+    // brief pause
+    setTimeout(() => {
+      currentMessage.value = nextMessage.value;
+      nextMessage.value = pickNextDifferent();
+      currentMessageColor.value = getRandomColor();
+      // relayout for new message
+      layoutText(currentMessage.value?.content || "");
+      // restart from right outside
+      offsetS = pathLength + 50;
+    }, 50);
+  }
+}
+
 function animationLoop(ts) {
-  if (!lastTimestamp) lastTimestamp = ts;
-  const dt = ts - lastTimestamp;
-  lastTimestamp = ts;
+  if (!lastTs) lastTs = ts;
+  const dt = ts - lastTs;
+  lastTs = ts;
 
   accumulator += dt;
   if (accumulator >= FRAME_INTERVAL) {
-    // Use percentPerPixel to move the text at a constant pixel speed
     const steps = Math.floor(accumulator / FRAME_INTERVAL);
     const stepTime = steps * FRAME_INTERVAL;
-    // Pixels to move in this frame (always constant speed)
-    const pixelsToMove = (animationSpeed * stepTime) / 1000;
-    // Convert to percent
-    const percentToMove =
-      pixelsToMove * (computeAnimationDuration.percentPerPixel || 1);
-    startOffsetValue -= percentToMove;
-
-    // Only switch when the entire text is out of view (left edge)
-    const textFullyOutThreshold =
-      START_OFFSET_END - (computeAnimationDuration.textLengthPercent || 0);
-
-    if (startOffsetValue <= textFullyOutThreshold) {
-      // Add a minimal pause before switching to the next message
-      setTimeout(() => {
-        currentMessage.value = nextMessage.value;
-        nextMessage.value = pickNextDifferent();
-        currentMessageColor.value = getRandomColor(); // Assign new random color
-        startOffsetValue = START_OFFSET_START;
-        if (textPathEl.value) {
-          textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
-          setTimeout(() => {
-            computeAnimationDuration();
-          }, 0);
-        }
-      }, 50); // minimal pause between messages
-      // Do not return, let the animation loop continue
-    }
-
-    if (textPathEl.value) {
-      textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
-    }
-
+    renderFrame(stepTime);
     accumulator -= steps * FRAME_INTERVAL;
   }
 
@@ -213,37 +377,29 @@ function animationLoop(ts) {
 
 function startAnimation() {
   stopAnimation();
-  lastTimestamp = 0;
+  lastTs = 0;
   accumulator = 0;
-  // Ensure attribute is initialized even if rAF is delayed
-  if (textPathEl.value) {
-    textPathEl.value.setAttribute("startOffset", `${startOffsetValue}%`);
-  }
   rafId = setTimeout(() => animationLoop(performance.now()), FRAME_INTERVAL);
 }
-
 function stopAnimation() {
   if (rafId) {
     clearTimeout(rafId);
     rafId = null;
   }
-  lastTimestamp = 0;
+  lastTs = 0;
   accumulator = 0;
 }
 
-// Format date (kept for potential future use)
-function formatDate(dateString) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  return date.toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+// Setup everything for current template/message
+function prepareScene() {
+  if (!canvasEl.value) return;
+  computeViewport();
+  buildSamples();
+  layoutText(currentMessage.value?.content || "");
+  offsetS = pathLength + 50; // start off right side
 }
 
-// Load messages
+// Messages lifecycle
 async function loadMessages() {
   try {
     const response = await axios.get(`${API_URL}/messages`);
@@ -254,14 +410,28 @@ async function loadMessages() {
   }
 }
 
-// Watch for route changes to restart animation
+function updateMessage() {
+  currentMessage.value = getRandomMessage();
+  nextMessage.value = pickNextDifferent();
+  currentMessageColor.value = getRandomColor();
+  // prepare canvas for new message and template
+  prepareScene();
+}
+
+// Watch for template change
 watch(
   () => route.params.id,
   () => {
-    updateMessage();
+    prepareScene();
     startAnimation();
   }
 );
+
+// Handle resize
+function onResize() {
+  prepareScene();
+}
+window.addEventListener("resize", onResize);
 
 onMounted(async () => {
   await loadMessages();
@@ -280,7 +450,6 @@ onMounted(async () => {
 
   socket.on("message-deleted", (messageId) => {
     messages.value = messages.value.filter((m) => m.id !== messageId);
-    // If current message was deleted, get a new one
     if (currentMessage.value && currentMessage.value.id === messageId) {
       updateMessage();
     }
@@ -289,17 +458,15 @@ onMounted(async () => {
     }
   });
 
-  // Start the animation loop
+  // Prepare and start
+  prepareScene();
   startAnimation();
-  // Compute initial duration after DOM is ready
-  setTimeout(() => {
-    computeAnimationDuration();
-  }, 0);
 });
 
 onUnmounted(() => {
   stopAnimation();
   if (socket) socket.disconnect();
+  window.removeEventListener("resize", onResize);
 });
 </script>
 
@@ -314,30 +481,20 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.svg-container {
+.canvas-container {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   height: 100vh;
-  /* Hint to browser for hardware acceleration */
   will-change: transform;
 }
 
-.svg-container svg {
+canvas {
+  display: block;
   max-width: 100%;
   max-height: 100%;
-  /* removed drop-shadow filter for performance on low-powered devices */
-  /* filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1)); */
   pointer-events: none;
-}
-
-.animated-text {
-  /* removed text drop-shadow for performance */
-  /* filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1)); */
-  text-rendering: optimizeSpeed;
-  /* Hint for hardware acceleration */
-  will-change: transform;
 }
 </style>
