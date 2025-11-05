@@ -72,8 +72,9 @@ const canvasEl = ref(null);
 let ctx = null;
 
 // Design space (paths are authored in this space)
-const DESIGN_W = 1280;
-const DESIGN_H = 720;
+// These will be updated from the current template
+let DESIGN_W = 1280;
+let DESIGN_H = 720;
 
 // Viewport mapping
 let view = {
@@ -122,6 +123,35 @@ function qDeriv(p0, p1, p2, t) {
     y: 2 * (1 - t) * (p1.y - p0.y) + 2 * t * (p2.y - p1.y),
   };
 }
+
+// Utils: cubic Bezier
+function cPoint(p0, p1, p2, p3, t) {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const mt3 = mt2 * mt;
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return {
+    x: mt3 * p0.x + 3 * mt2 * t * p1.x + 3 * mt * t2 * p2.x + t3 * p3.x,
+    y: mt3 * p0.y + 3 * mt2 * t * p1.y + 3 * mt * t2 * p2.y + t3 * p3.y,
+  };
+}
+function cDeriv(p0, p1, p2, p3, t) {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const t2 = t * t;
+  return {
+    x:
+      3 * mt2 * (p1.x - p0.x) +
+      6 * mt * t * (p2.x - p1.x) +
+      3 * t2 * (p3.x - p2.x),
+    y:
+      3 * mt2 * (p1.y - p0.y) +
+      6 * mt * t * (p2.y - p1.y) +
+      3 * t2 * (p3.y - p2.y),
+  };
+}
+
 function dist(a, b) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -139,28 +169,100 @@ function approxQuadLen(p0, p1, p2) {
   }
   return len;
 }
+function approxCubicLen(p0, p1, p2, p3) {
+  // simple 20-subdivision approximation for cubic curves
+  let len = 0;
+  let prev = p0;
+  for (let i = 1; i <= 20; i++) {
+    const t = i / 20;
+    const pt = cPoint(p0, p1, p2, p3, t);
+    len += dist(prev, pt);
+    prev = pt;
+  }
+  return len;
+}
 
-// Parse minimal SVG path with absolute M and Q only
-function parseMQPath(d) {
-  const tokens = d.match(/[MQ]|-?\d*\.?\d+/gi) || [];
+// Parse SVG path with absolute M, Q, and C commands
+function parsePath(d) {
+  // Match commands and numbers
+  const tokens =
+    d.match(/[MmQqCcLlHhVvSs]|[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/gi) || [];
   const segs = [];
   let i = 0;
   let cur = { x: 0, y: 0 };
+  let lastCommand = null;
+
   while (i < tokens.length) {
-    const tok = tokens[i++];
+    let tok = tokens[i];
+
+    // Check if current token is a command or a number
+    const isCommand = /[MmQqCcLlHhVvSs]/.test(tok);
+
+    if (!isCommand && lastCommand) {
+      // Implicit command repetition - use last command
+      tok = lastCommand;
+    } else if (isCommand) {
+      // Consume the command token
+      i++;
+      lastCommand = tok;
+    } else {
+      // No command and no last command, skip
+      i++;
+      continue;
+    }
+
     if (tok === "M" || tok === "m") {
       const x = parseFloat(tokens[i++]);
       const y = parseFloat(tokens[i++]);
-      cur = { x, y };
+      cur = tok === "M" ? { x, y } : { x: cur.x + x, y: cur.y + y };
+      // After M/m, implicit coordinates are treated as L/l
+      lastCommand = tok === "M" ? "L" : "l";
+    } else if (tok === "L" || tok === "l") {
+      const x = parseFloat(tokens[i++]);
+      const y = parseFloat(tokens[i++]);
+      const next = tok === "L" ? { x, y } : { x: cur.x + x, y: cur.y + y };
+      // Convert line to cubic bezier (straight line)
+      segs.push({
+        type: "C",
+        p0: { ...cur },
+        p1: {
+          x: cur.x + (next.x - cur.x) / 3,
+          y: cur.y + (next.y - cur.y) / 3,
+        },
+        p2: {
+          x: cur.x + (2 * (next.x - cur.x)) / 3,
+          y: cur.y + (2 * (next.y - cur.y)) / 3,
+        },
+        p3: next,
+      });
+      cur = next;
     } else if (tok === "Q" || tok === "q") {
       const cx = parseFloat(tokens[i++]);
       const cy = parseFloat(tokens[i++]);
       const x = parseFloat(tokens[i++]);
       const y = parseFloat(tokens[i++]);
-      segs.push({ p0: { ...cur }, p1: { x: cx, y: cy }, p2: { x, y } });
-      cur = { x, y };
+      const ctrl =
+        tok === "Q" ? { x: cx, y: cy } : { x: cur.x + cx, y: cur.y + cy };
+      const next = tok === "Q" ? { x, y } : { x: cur.x + x, y: cur.y + y };
+      segs.push({ type: "Q", p0: { ...cur }, p1: ctrl, p2: next });
+      cur = next;
+    } else if (tok === "C" || tok === "c") {
+      const cx1 = parseFloat(tokens[i++]);
+      const cy1 = parseFloat(tokens[i++]);
+      const cx2 = parseFloat(tokens[i++]);
+      const cy2 = parseFloat(tokens[i++]);
+      const x = parseFloat(tokens[i++]);
+      const y = parseFloat(tokens[i++]);
+      const ctrl1 =
+        tok === "C" ? { x: cx1, y: cy1 } : { x: cur.x + cx1, y: cur.y + cy1 };
+      const ctrl2 =
+        tok === "C" ? { x: cx2, y: cy2 } : { x: cur.x + cx2, y: cur.y + cy2 };
+      const next = tok === "C" ? { x, y } : { x: cur.x + x, y: cur.y + y };
+      segs.push({ type: "C", p0: { ...cur }, p1: ctrl1, p2: ctrl2, p3: next });
+      cur = next;
     } else {
-      // ignore unknown tokens
+      // Unknown command, skip it
+      i++;
     }
   }
   return segs;
@@ -192,40 +294,78 @@ function computeViewport() {
 }
 
 function buildSamples() {
+  // Update design dimensions from current template
+  DESIGN_W = currentTemplate.value.width || 1280;
+  DESIGN_H = currentTemplate.value.height || 720;
+
   samples = [];
   pathLength = 0;
 
-  const segments = parseMQPath(currentTemplate.value.path);
+  const segments = parsePath(currentTemplate.value.path);
   let lastPt = null;
 
   for (const seg of segments) {
-    const p0 = seg.p0;
-    const p1 = seg.p1;
-    const p2 = seg.p2;
+    if (seg.type === "Q") {
+      // Quadratic Bezier
+      const p0 = seg.p0;
+      const p1 = seg.p1;
+      const p2 = seg.p2;
 
-    // Estimate segment length in design space
-    const L = approxQuadLen(p0, p1, p2);
+      // Estimate segment length in design space
+      const L = approxQuadLen(p0, p1, p2);
 
-    // Decide sample count for ~8px resolution in CSS pixels after scaling
-    const targetStepCss = 8;
-    const targetStepDesign = targetStepCss / Math.max(view.scale, 1e-6);
-    const steps = Math.max(8, Math.ceil(L / targetStepDesign));
+      // Decide sample count for ~8px resolution in CSS pixels after scaling
+      const targetStepCss = 8;
+      const targetStepDesign = targetStepCss / Math.max(view.scale, 1e-6);
+      const steps = Math.max(8, Math.ceil(L / targetStepDesign));
 
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      const pt = qPoint(p0, p1, p2, t);
-      const dpt = qDeriv(p0, p1, p2, t);
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const pt = qPoint(p0, p1, p2, t);
+        const dpt = qDeriv(p0, p1, p2, t);
 
-      // Map to CSS pixel space
-      const x = view.offsetX + pt.x * view.scale;
-      const y = view.offsetY + pt.y * view.scale;
-      const angle = Math.atan2(dpt.y, dpt.x);
+        // Map to CSS pixel space
+        const x = view.offsetX + pt.x * view.scale;
+        const y = view.offsetY + pt.y * view.scale;
+        const angle = Math.atan2(dpt.y, dpt.x);
 
-      if (lastPt) {
-        pathLength += Math.hypot(x - lastPt.x, y - lastPt.y);
+        if (lastPt) {
+          pathLength += Math.hypot(x - lastPt.x, y - lastPt.y);
+        }
+        samples.push({ s: pathLength, x, y, angle });
+        lastPt = { x, y };
       }
-      samples.push({ s: pathLength, x, y, angle });
-      lastPt = { x, y };
+    } else if (seg.type === "C") {
+      // Cubic Bezier
+      const p0 = seg.p0;
+      const p1 = seg.p1;
+      const p2 = seg.p2;
+      const p3 = seg.p3;
+
+      // Estimate segment length in design space
+      const L = approxCubicLen(p0, p1, p2, p3);
+
+      // Decide sample count for ~8px resolution in CSS pixels after scaling
+      const targetStepCss = 8;
+      const targetStepDesign = targetStepCss / Math.max(view.scale, 1e-6);
+      const steps = Math.max(8, Math.ceil(L / targetStepDesign));
+
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const pt = cPoint(p0, p1, p2, p3, t);
+        const dpt = cDeriv(p0, p1, p2, p3, t);
+
+        // Map to CSS pixel space
+        const x = view.offsetX + pt.x * view.scale;
+        const y = view.offsetY + pt.y * view.scale;
+        const angle = Math.atan2(dpt.y, dpt.x);
+
+        if (lastPt) {
+          pathLength += Math.hypot(x - lastPt.x, y - lastPt.y);
+        }
+        samples.push({ s: pathLength, x, y, angle });
+        lastPt = { x, y };
+      }
     }
   }
 }
