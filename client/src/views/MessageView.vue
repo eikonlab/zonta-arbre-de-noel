@@ -103,7 +103,7 @@ let lastTs = 0;
 let accumulator = 0;
 
 // Font settings
-const FONT_SIZE = 60; // px
+const FONT_SIZE = 139; // px
 const FONT_FAMILY = "Arial, sans-serif";
 const FONT_WEIGHT = 600;
 const LETTER_SPACING = 2; // px additional spacing per glyph

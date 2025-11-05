@@ -36,12 +36,14 @@ export const messageTemplates = [
 
 // Array of colors for messages
 export const messageColors = [
-  "#2563eb", // Blue
-  "#dc2626", // Red
-  "#16a34a", // Green
-  "#9333ea", // Purple
-  "#ea580c", // Orange
+  "#AE5C1A",
+  "#DF8507",
+  "#E07517",
+  "#F56E00",
+  "#FF9337",
+  "#FDBC2E",
 ];
+
 
 // Get a random color from the array
 export function getRandomColor() {
