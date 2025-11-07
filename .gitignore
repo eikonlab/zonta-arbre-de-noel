@@ -1,5 +1,5 @@
 # Database
-messages.db
+server/messages.db
 
 # Environment variables
 .env
