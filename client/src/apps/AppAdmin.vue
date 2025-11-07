@@ -2,24 +2,6 @@
   <div class="admin-container">
     <header class="admin-header">
       <h1>Administration & Modération des Messages</h1>
-      <div class="stats">
-        <div class="stat-card">
-          <span class="stat-number">{{ totalMessages }}</span>
-          <span class="stat-label">Messages Total</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-number">{{ visibleMessages }}</span>
-          <span class="stat-label">Visibles</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-number">{{ hiddenMessages }}</span>
-          <span class="stat-label">Masqués</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-number">{{ flaggedMessages }}</span>
-          <span class="stat-label">Signalés</span>
-        </div>
-      </div>
     </header>
 
     <div class="controls">
@@ -159,22 +141,6 @@ export default {
   },
 
   computed: {
-    totalMessages() {
-      return this.messages.length;
-    },
-
-    visibleMessages() {
-      return this.messages.filter((m) => !m.hidden).length;
-    },
-
-    hiddenMessages() {
-      return this.messages.filter((m) => m.hidden).length;
-    },
-
-    flaggedMessages() {
-      return this.messages.filter((m) => m.flagged).length;
-    },
-
     filteredMessages() {
       return this.messages
         .filter((message) => {
@@ -362,46 +328,11 @@ export default {
 }
 
 .admin-header h1 {
-  margin: 0 0 20px 0;
+  margin: 0;
   color: #5c3317;
   font-size: 2.5em;
   text-align: center;
   font-weight: 700;
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
-}
-
-.stat-card {
-  background: #5c3317;
-  padding: 20px;
-  border-radius: 16px;
-  text-align: center;
-  color: #fdbc2e;
-  box-shadow: 0 8px 24px rgba(92, 51, 23, 0.3);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(92, 51, 23, 0.4);
-}
-
-.stat-number {
-  display: block;
-  font-size: 2.5em;
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-
-.stat-label {
-  font-size: 1em;
-  opacity: 0.9;
-  font-weight: 600;
 }
 
 .controls {
@@ -745,10 +676,6 @@ export default {
     flex-direction: column;
     align-items: stretch;
     gap: 15px;
-  }
-
-  .stats {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }
 </style>
