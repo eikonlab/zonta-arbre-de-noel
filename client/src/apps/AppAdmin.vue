@@ -307,22 +307,23 @@ export default {
 .admin-container {
   min-height: 100vh;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #fdbc2e;
 }
 
 .admin-header {
-  background: rgba(255, 255, 255, 0.95);
+  background: white;
   padding: 30px;
-  border-radius: 15px;
+  border-radius: 24px;
   margin-bottom: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
 }
 
 .admin-header h1 {
   margin: 0 0 20px 0;
-  color: #333;
+  color: #5c3317;
   font-size: 2.5em;
   text-align: center;
+  font-weight: 700;
 }
 
 .stats {
@@ -333,17 +334,23 @@ export default {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: #5c3317;
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 16px;
   text-align: center;
-  color: white;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  color: #fdbc2e;
+  box-shadow: 0 8px 24px rgba(92, 51, 23, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(92, 51, 23, 0.4);
 }
 
 .stat-number {
   display: block;
-  font-size: 1em;
+  font-size: 2.5em;
   font-weight: bold;
   margin-bottom: 5px;
 }
@@ -351,19 +358,20 @@ export default {
 .stat-label {
   font-size: 1em;
   opacity: 0.9;
+  font-weight: 600;
 }
 
 .controls {
-  background: rgba(255, 255, 255, 0.95);
+  background: white;
   padding: 20px;
-  border-radius: 15px;
+  border-radius: 24px;
   margin-bottom: 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 20px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
 }
 
 .filter-controls {
@@ -377,12 +385,15 @@ export default {
   align-items: center;
   cursor: pointer;
   font-size: 1.1em;
-  color: #333;
+  color: #5c3317;
+  font-weight: 600;
 }
 
 .checkbox-container input[type="checkbox"] {
   margin-right: 10px;
   transform: scale(1.2);
+  cursor: pointer;
+  accent-color: #5c3317;
 }
 
 .action-controls {
@@ -394,7 +405,7 @@ export default {
 .btn {
   padding: 12px 24px;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 1em;
   font-weight: 600;
@@ -406,33 +417,36 @@ export default {
 }
 
 .btn-primary {
-  background: #007bff;
-  color: white;
+  background: #5c3317;
+  color: #fdbc2e;
+  box-shadow: 0 4px 16px rgba(92, 51, 23, 0.3);
 }
 
 .btn-primary:hover {
-  background: #0056b3;
   transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(92, 51, 23, 0.4);
 }
 
 .btn-success {
-  background: #28a745;
-  color: white;
+  background: #5c3317;
+  color: #fdbc2e;
+  box-shadow: 0 4px 16px rgba(92, 51, 23, 0.3);
 }
 
 .btn-success:hover {
-  background: #1e7e34;
   transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(92, 51, 23, 0.4);
 }
 
 .btn-danger {
-  border: 2px solid #dc3545;
-  background: #c8233333;
-  color: white;
+  border: 2px solid #5c3317;
+  background: rgba(92, 51, 23, 0.1);
+  color: #5c3317;
 }
 
 .btn-danger:hover {
-  background: #c82333;
+  background: #5c3317;
+  color: #fdbc2e;
 }
 
 .btn-small {
@@ -441,10 +455,10 @@ export default {
 }
 
 .messages-container {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 15px;
+  background: white;
+  border-radius: 24px;
   padding: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
 }
 
 .loading,
@@ -452,7 +466,8 @@ export default {
   text-align: center;
   padding: 50px;
   font-size: 1.3em;
-  color: #666;
+  color: #5c3317;
+  font-weight: 600;
 }
 
 .messages-table {
@@ -463,16 +478,16 @@ export default {
 .messages-table th,
 .messages-table td {
   padding: 12px 8px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(92, 51, 23, 0.1);
   text-align: left;
   vertical-align: top;
 }
 .messages-table th {
-  background: #f7f7f7;
+  background: rgba(92, 51, 23, 0.05);
   font-weight: bold;
-  color: #333;
+  color: #5c3317;
+  border-bottom: 2px solid #5c3317;
 }
-.messages-table tr.flagged,
 .messages-table tr.flagged,
 .messages-table tr.toxic {
   background: #fff9e6;
@@ -480,21 +495,21 @@ export default {
 }
 .messages-table tr.hidden {
   opacity: 0.6;
-  background: #f0f0f0;
+  background: rgba(92, 51, 23, 0.05);
 }
 
 .message-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  border-left: 5px solid #007bff;
+  box-shadow: 0 4px 16px rgba(92, 51, 23, 0.1);
+  border-left: 5px solid #5c3317;
   transition: all 0.3s ease;
 }
 
 .message-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(92, 51, 23, 0.2);
 }
 
 .message-card.flagged {
@@ -514,7 +529,7 @@ export default {
 
 .message-card.hidden {
   opacity: 0.6;
-  background: #f0f0f0;
+  background: rgba(92, 51, 23, 0.05);
 }
 
 .message-header {
@@ -534,12 +549,12 @@ export default {
 
 .author {
   font-weight: bold;
-  color: #333;
+  color: #5c3317;
   font-size: 1.1em;
 }
 
 .date {
-  color: #666;
+  color: rgba(92, 51, 23, 0.7);
   font-size: 0.9em;
 }
 
@@ -602,7 +617,7 @@ export default {
   margin: 15px 0;
   font-size: 1.1em;
   line-height: 1.6;
-  color: #333;
+  color: #5c3317;
   word-wrap: break-word;
 }
 
@@ -612,7 +627,7 @@ export default {
   align-items: center;
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid rgba(92, 51, 23, 0.1);
   flex-wrap: wrap;
   gap: 10px;
 }
@@ -622,12 +637,14 @@ export default {
   align-items: center;
   cursor: pointer;
   font-weight: 600;
-  color: #333;
+  color: #5c3317;
 }
 
 .visibility-toggle input[type="checkbox"] {
   margin-right: 10px;
   transform: scale(1.2);
+  cursor: pointer;
+  accent-color: #5c3317;
 }
 
 .toggle-label {

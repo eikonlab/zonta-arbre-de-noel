@@ -1,16 +1,20 @@
 <template>
   <div class="container">
     <div v-if="!hasValidToken && !tokenChecked" class="loading">
-      <h1>� Vérification en cours...</h1>
+      <h1>🔍 Vérification en cours...</h1>
       <p>Validation du token d'accès...</p>
     </div>
-    <div v-else>
+
+    <div v-else-if="messageSent" class="confirmation">
+      <h1>✅ Message envoyé !</h1>
+      <p>Votre message a été publié avec succès sur le mur de témoignages.</p>
+      <p class="thank-you">Merci pour votre contribution.</p>
+    </div>
+
+    <div v-else class="form-container">
       <div class="page-title">Formulaire</div>
       <div v-if="!hasValidToken && tokenChecked" class="token-warning">
-        <p>
-          ⚠️ Token expiré ou invalide - Les messages peuvent ne pas
-          s'enregistrer
-        </p>
+        <p>⚠️ Accès au formulaire expiré - Veuillez rescanner le QR Code</p>
       </div>
 
       <p class="context-box">
@@ -53,6 +57,7 @@ const author = ref("");
 const content = ref("");
 const hasValidToken = ref(false);
 const tokenChecked = ref(false);
+const messageSent = ref(false);
 
 // Set page title
 document.title = "Zonta - Ajouter un message";
@@ -106,7 +111,7 @@ async function sendMessage() {
       author: author.value,
       content: content.value,
     });
-    content.value = "";
+    messageSent.value = true;
   } catch (error) {
     console.error("Error sending message:", error);
     alert("Erreur lors de l'envoi du message. Veuillez réessayer.");
@@ -116,30 +121,41 @@ async function sendMessage() {
 
 <style scoped>
 .container {
-  max-width: 540px;
-  margin: 2.5rem auto;
-  padding: 2.5rem 2rem 2rem 2rem;
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 4px 24px #0002;
-  border: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #fdbc2e;
+  padding: 2rem;
+}
+
+.form-container {
+  max-width: 600px;
+  width: 100%;
+  background: white;
+  border-radius: 24px;
+  padding: 2.5rem;
+  box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
 }
 
 .access-denied {
   text-align: center;
   padding: 3rem 2rem;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
 }
 
 .access-denied h1 {
   font-size: 2.2rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
-  color: #dc2626;
+  color: #5c3317;
 }
 
 .access-denied p {
   font-size: 1.1rem;
-  color: #4b5563;
+  color: #5c3317;
   margin-bottom: 1rem;
   line-height: 1.5;
 }
@@ -147,36 +163,70 @@ async function sendMessage() {
 .loading {
   text-align: center;
   padding: 3rem 2rem;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
 }
 
 .loading h1 {
   font-size: 2.2rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
-  color: #2563eb;
+  color: #5c3317;
 }
 
 .loading p {
   font-size: 1.1rem;
-  color: #4b5563;
+  color: #5c3317;
   margin-bottom: 1rem;
   line-height: 1.5;
 }
 
+.confirmation {
+  text-align: center;
+  padding: 4rem 3rem;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
+  max-width: 600px;
+}
+
+.confirmation h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #5c3317;
+}
+
+.confirmation p {
+  font-size: 1.2rem;
+  color: #5c3317;
+  margin-bottom: 1rem;
+  line-height: 1.8;
+}
+
+.confirmation .thank-you {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  color: #5c3317;
+}
+
 .token-warning {
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
+  background: #fff3cd;
+  border: 2px solid #5c3317;
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
   margin-bottom: 1.5rem;
   text-align: center;
+  box-shadow: 0 4px 16px rgba(92, 51, 23, 0.2);
 }
 
 .token-warning p {
-  color: #92400e;
-  font-weight: 500;
+  color: #5c3317;
+  font-weight: 600;
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .modern-title {
@@ -184,81 +234,114 @@ async function sendMessage() {
   font-size: 2.2rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
-  color: #2d3748;
+  color: #5c3317;
   letter-spacing: 1px;
 }
 
 .context-box {
-  background: #f0f4ff;
-  padding: 0.9rem 1rem 1rem 1rem;
-  border-left: 4px solid #2563eb;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  line-height: 1.35rem;
-  color: #1e293b;
-  margin-top: -0.5rem;
-  margin-bottom: 1.2rem;
+  background: rgba(92, 51, 23, 0.05);
+  padding: 1.5rem;
+  border-left: 4px solid #5c3317;
+  border-radius: 16px;
+  font-size: 1rem;
+  line-height: 1.6rem;
+  color: #5c3317;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(92, 51, 23, 0.1);
 }
+
 .modern-form {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
-  margin-bottom: 1.5rem;
-  background: #f5f7fa;
-  padding: 0.7rem 1rem;
-  border-radius: 12px;
-  box-shadow: 0 1px 4px #0001;
+  gap: 1rem;
 }
+
 .modern-input {
   flex: 1;
-  padding: 0.6rem 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  border: 2px solid rgba(92, 51, 23, 0.2);
+  border-radius: 12px;
   font-size: 1rem;
   background: #fff;
-  transition: border 0.2s;
+  transition: border 0.2s, box-shadow 0.2s;
+  color: #5c3317;
 }
+
+.modern-input::placeholder {
+  color: rgba(92, 51, 23, 0.5);
+}
+
 .modern-input:focus {
-  border: 1.5px solid #3182ce;
+  border: 2px solid #5c3317;
   outline: none;
+  box-shadow: 0 0 0 3px rgba(92, 51, 23, 0.1);
 }
+
 .modern-textarea {
   resize: vertical;
-  min-height: 100px;
+  min-height: 120px;
   font-family: inherit;
-  line-height: 1.5;
+  line-height: 1.6;
 }
+
 .modern-btn {
-  background: linear-gradient(90deg, #3182ce 60%, #63b3ed 100%);
-  color: #fff;
+  background: #5c3317;
+  color: #fdbc2e;
   border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
+  padding: 1rem 2rem;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.1rem;
   cursor: pointer;
-  box-shadow: 0 2px 8px #3182ce22;
-  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(92, 51, 23, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
+
 .modern-btn:hover:not(:disabled) {
-  background: linear-gradient(90deg, #2563eb 60%, #4299e1 100%);
-  box-shadow: 0 4px 16px #3182ce33;
+  transform: scale(1.02);
+  box-shadow: 0 8px 24px rgba(92, 51, 23, 0.4);
 }
+
 .modern-btn:disabled {
-  background: #9ca3af;
+  background: rgba(92, 51, 23, 0.4);
   cursor: not-allowed;
   box-shadow: none;
+  transform: none;
 }
 
 .page-title {
   text-align: center;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #64748b;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #5c3317;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #e2e8f0;
+  letter-spacing: 2px;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 3px solid #5c3317;
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .form-container {
+    padding: 2rem 1.5rem;
+  }
+
+  .context-box {
+    padding: 1rem;
+    font-size: 0.95rem;
+  }
+
+  .page-title {
+    font-size: 1.2rem;
+  }
+
+  .modern-btn {
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+  }
 }
 </style>
