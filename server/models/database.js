@@ -23,6 +23,7 @@ function initDatabase() {
       toxicity REAL,
       onTopic INTEGER DEFAULT 1,
       flagged TEXT,
+      flagReason TEXT,
       hidden INTEGER DEFAULT 0,
       createdAt TEXT NOT NULL
     )
@@ -38,6 +39,7 @@ function initDatabase() {
           return;
         }
         const hasHiddenColumn = columns.some(col => col.name === 'hidden');
+        const hasFlagReasonColumn = columns.some(col => col.name === 'flagReason');
         if (!hasHiddenColumn) {
           console.log('Migrating database: adding hidden column');
           db.run('ALTER TABLE messages ADD COLUMN hidden INTEGER DEFAULT 0', (err) => {
@@ -45,6 +47,16 @@ function initDatabase() {
               console.error('Error adding hidden column:', err);
             } else {
               console.log('Migration complete: hidden column added');
+            }
+          });
+        }
+        if (!hasFlagReasonColumn) {
+          console.log('Migrating database: adding flagReason column');
+          db.run('ALTER TABLE messages ADD COLUMN flagReason TEXT', (err) => {
+            if (err) {
+              console.error('Error adding flagReason column:', err);
+            } else {
+              console.log('Migration complete: flagReason column added');
             }
           });
         }
@@ -75,11 +87,11 @@ function getAllMessages() {
 // Create a new message
 function createMessage(message) {
   return new Promise((resolve, reject) => {
-    const { author, content, toxicity, onTopic, flagged, hidden, createdAt } = message;
+    const { author, content, toxicity, onTopic, flagged, flagReason, hidden, createdAt } = message;
     db.run(
-      `INSERT INTO messages (author, content, toxicity, onTopic, flagged, hidden, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [author, content, toxicity, onTopic ? 1 : 0, flagged, hidden ? 1 : 0, createdAt],
+      `INSERT INTO messages (author, content, toxicity, onTopic, flagged, flagReason, hidden, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [author, content, toxicity, onTopic ? 1 : 0, flagged, flagReason, hidden ? 1 : 0, createdAt],
       function (err) {
         if (err) {
           reject(err);
@@ -168,11 +180,44 @@ function bulkUpdateMessages(updates) {
   });
 }
 
+// Get hidden messages since a given ISO datetime
+function getHiddenMessagesSince(sinceISO, limit = 50, offset = 0) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      SELECT * FROM messages
+      WHERE hidden = 1 AND datetime(createdAt) >= datetime(?)
+      ORDER BY datetime(createdAt) DESC
+      LIMIT ? OFFSET ?
+    `;
+    db.all(sql, [sinceISO, limit, offset], (err, rows) => {
+      if (err) return reject(err);
+      const messages = rows.map(row => ({
+        ...row,
+        hidden: Boolean(row.hidden),
+        onTopic: Boolean(row.onTopic)
+      }));
+      resolve(messages);
+    });
+  });
+}
+
+function countHiddenMessagesSince(sinceISO) {
+  return new Promise((resolve, reject) => {
+    const sql = `SELECT COUNT(*) as cnt FROM messages WHERE hidden = 1 AND datetime(createdAt) >= datetime(?)`;
+    db.get(sql, [sinceISO], (err, row) => {
+      if (err) return reject(err);
+      resolve(row?.cnt || 0);
+    });
+  });
+}
+
 module.exports = {
   db,
   getAllMessages,
   createMessage,
   updateMessage,
   deleteMessage,
-  bulkUpdateMessages
+  bulkUpdateMessages,
+  getHiddenMessagesSince,
+  countHiddenMessagesSince
 };

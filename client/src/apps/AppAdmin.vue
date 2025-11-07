@@ -55,6 +55,7 @@
             <tr>
               <th>Nom</th>
               <th>Status</th>
+              <th>Raison</th>
               <th>Date</th>
               <th>Texte</th>
               <th>Afficher</th>
@@ -93,6 +94,16 @@
                 </span>
               </td>
               <td>
+                <span
+                  v-if="message.flagReason"
+                  class="flag-reason"
+                  :title="message.flagReason"
+                >
+                  {{ shortReason(message.flagReason) }}
+                </span>
+                <span v-else>-</span>
+              </td>
+              <td>
                 <span class="date">{{ formatDate(message.createdAt) }}</span>
               </td>
               <td>
@@ -104,6 +115,11 @@
                   <input
                     type="checkbox"
                     :checked="!message.hidden"
+                    :title="
+                      message.flagged
+                        ? `Message signalé (${message.flagged}) — ne s'affichera pas sur le mur public`
+                        : 'Afficher sur le mur'
+                    "
                     @change="toggleVisibility(message)"
                   />
                 </label>
@@ -183,14 +199,30 @@ export default {
   },
 
   methods: {
+    shortReason(reason) {
+      if (!reason) return "";
+      // keep concise: prefix before ':' and trimmed regex if present
+      const [kind, detail] = reason.split(":", 2);
+      if (!detail) return kind;
+      // strip slashes for regex visuals
+      const d = detail.replaceAll("/", "").slice(0, 28);
+      return `${kind}:${d}${detail.length > 28 ? "…" : ""}`;
+    },
     async initializeSocket() {
       const API_URL =
         import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
       this.socket = io(API_URL);
 
+      // Register as admin to receive privileged events if needed later
+      this.socket.emit("register-admin");
+
       this.socket.on("new-message", (message) => {
-        // Add hidden property to new messages (default to visible)
-        message.hidden = false;
+        // Respect server-provided hidden flag
+        this.messages.unshift(message);
+      });
+
+      // Receive admin-only new messages (hidden on public)
+      this.socket.on("admin-new-message", (message) => {
         this.messages.unshift(message);
       });
 
@@ -587,6 +619,21 @@ export default {
 .flag-badge.flagged {
   background: #ffc107;
   color: #333;
+}
+
+.flag-reason {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.65em;
+  border-radius: 6px;
+  background: rgba(92, 51, 23, 0.08);
+  color: #5c3317;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: help;
+  border: 1px solid rgba(92, 51, 23, 0.15);
 }
 
 .toxicity-score {

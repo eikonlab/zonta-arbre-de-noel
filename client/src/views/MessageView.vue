@@ -41,7 +41,11 @@ const templates = messageTemplates;
 
 const visibleMessages = computed(() =>
   messages.value.filter(
-    (msg) => !msg.hidden && msg.content && msg.content.trim().length > 0
+    (msg) =>
+      !msg.hidden &&
+      !msg.flagged &&
+      msg.content &&
+      msg.content.trim().length > 0
   )
 );
 

@@ -3,10 +3,18 @@ require('dotenv').config();
 const fetch = require('node-fetch');
 
 const PERSPECTIVE_API_KEY = process.env.PERSPECTIVE_API_KEY;
-const API_URL = 'https://commentanalyzer.googleapis.com/v1alpha1/comments:analyze?key=' + PERSPECTIVE_API_KEY;
+const API_URL = PERSPECTIVE_API_KEY
+  ? 'https://commentanalyzer.googleapis.com/v1alpha1/comments:analyze?key=' + PERSPECTIVE_API_KEY
+  : null;
 
 async function getToxicityScore(text) {
-  if (!PERSPECTIVE_API_KEY) throw new Error('Perspective API key not set');
+  // Fallback gracieux : si pas de clé on retourne null (aucune toxicité calculée)
+  if (!PERSPECTIVE_API_KEY || !API_URL) {
+    if (process.env.NODE_ENV !== 'test') {
+      console.warn('[Perspective] Clé API absente - classification basée uniquement sur patterns internes.');
+    }
+    return null; // Indique qu'on n'a pas de score
+  }
   const body = {
     comment: { text },
     languages: ['fr'],
