@@ -49,6 +49,9 @@ jobs:
       - name: Test SSH Connection
         run: ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i ~/.ssh/github-actions ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }} 'echo "SSH connection successful"'
 
+      - name: Create message.db symlink on server
+        run: ssh -i ~/.ssh/github-actions -o BatchMode=yes -o StrictHostKeyChecking=no ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }} "mkdir -p '${{ vars.DEPLOY_PATH }}/server' && ln -sfn '${{ vars.DEPLOY_PATH }}/shared/message.db' '${{ vars.DEPLOY_PATH }}/server/message.db'"
+
       - name: Sync files to server
         run: rsync -auvzrl --delete --ignore-missing-args --exclude 'node_modules' -e "ssh -i ~/.ssh/github-actions -o BatchMode=yes -o StrictHostKeyChecking=no" ./ ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }}:${{ vars.DEPLOY_PATH }}/server
 
