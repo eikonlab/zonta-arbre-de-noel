@@ -114,13 +114,13 @@
                 <label class="visibility-toggle">
                   <input
                     type="checkbox"
-                    :checked="!message.hidden"
+                    :checked="!message.hidden && !message.flagged"
                     :title="
                       message.flagged
                         ? `Message signalé (${message.flagged}) — ne s'affichera pas sur le mur public`
                         : 'Afficher sur le mur'
                     "
-                    @change="toggleVisibility(message)"
+                    @change="toggleVisibility(message, $event)"
                   />
                 </label>
               </td>
@@ -262,18 +262,29 @@ export default {
       await this.loadMessages();
     },
 
-    async toggleVisibility(message) {
+    async toggleVisibility(message, e) {
       try {
-        message.hidden = !message.hidden;
+        const wantVisible = e?.target?.checked === true;
+        const wasFlagged = Boolean(message.flagged);
+        // Update local state optimistically
+        message.hidden = !wantVisible;
         const API_URL =
           import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
-        // In a real app, you would send this update to the server
-        await axios.patch(`${API_URL}/messages/${message.id}`, {
-          hidden: message.hidden,
-        });
+        // If admin wants it visible and it was flagged, auto-approve: clear flags
+        const payload =
+          wantVisible && wasFlagged
+            ? { hidden: false, flagged: null, flagReason: null }
+            : { hidden: !wantVisible };
+        const { data } = await axios.patch(
+          `${API_URL}/messages/${message.id}`,
+          payload
+        );
+        // Sync local copy with server state
+        const index = this.messages.findIndex((m) => m.id === message.id);
+        if (index !== -1) this.messages[index] = data;
       } catch (error) {
         // Revert on error
-        message.hidden = !message.hidden;
+        message.hidden = !message.hidden; // naive revert
         console.error("Erreur lors de la mise à jour:", error);
         alert("Erreur lors de la mise à jour du message");
       }

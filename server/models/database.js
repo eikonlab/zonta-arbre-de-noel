@@ -60,6 +60,18 @@ function initDatabase() {
             }
           });
         }
+
+        // Ensure consistency: any flagged message should be hidden by default
+        db.run(
+          "UPDATE messages SET hidden = 1 WHERE (flagged IS NOT NULL AND flagged != '') AND hidden = 0",
+          (err) => {
+            if (err) {
+              console.error('Error applying visibility consistency fix:', err);
+            } else {
+              console.log('Visibility consistency fix applied for flagged messages');
+            }
+          }
+        );
       });
     }
   });
@@ -110,31 +122,48 @@ function createMessage(message) {
 // Update a message (for moderation)
 function updateMessage(id, updates) {
   return new Promise((resolve, reject) => {
-    const { hidden } = updates;
-    db.run(
-      'UPDATE messages SET hidden = ? WHERE id = ?',
-      [hidden ? 1 : 0, id],
-      function (err) {
-        if (err) {
-          reject(err);
-        } else if (this.changes === 0) {
-          reject(new Error('Message not found'));
-        } else {
-          // Fetch and return the updated message
-          db.get('SELECT * FROM messages WHERE id = ?', [id], (err, row) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve({
-                ...row,
-                hidden: Boolean(row.hidden),
-                onTopic: Boolean(row.onTopic)
-              });
-            }
-          });
-        }
+    const fields = [];
+    const params = [];
+
+    if (typeof updates.hidden === 'boolean') {
+      fields.push('hidden = ?');
+      params.push(updates.hidden ? 1 : 0);
+    }
+    if (typeof updates.flagged !== 'undefined') {
+      fields.push('flagged = ?');
+      params.push(updates.flagged === null ? null : updates.flagged);
+    }
+    if (typeof updates.flagReason !== 'undefined') {
+      fields.push('flagReason = ?');
+      params.push(updates.flagReason === null ? null : updates.flagReason);
+    }
+
+    if (fields.length === 0) {
+      return reject(new Error('No valid fields to update'));
+    }
+
+    const sql = `UPDATE messages SET ${fields.join(', ')} WHERE id = ?`;
+    params.push(id);
+
+    db.run(sql, params, function (err) {
+      if (err) {
+        return reject(err);
       }
-    );
+      if (this.changes === 0) {
+        return reject(new Error('Message not found'));
+      }
+      // Fetch and return the updated message
+      db.get('SELECT * FROM messages WHERE id = ?', [id], (err, row) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve({
+          ...row,
+          hidden: Boolean(row.hidden),
+          onTopic: Boolean(row.onTopic)
+        });
+      });
+    });
   });
 }
 

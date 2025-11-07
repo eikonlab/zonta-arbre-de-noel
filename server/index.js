@@ -90,7 +90,8 @@ app.post('/debug/messages', async (req, res) => {
         onTopic,
         flagged,
         flagReason: flagReason || null,
-        hidden: false,
+        // If flagged, default to hidden so admin sees it as not displayed
+        hidden: Boolean(flagged),
         createdAt: new Date().toISOString()
       };
       const message = await createMessage(messageData);
@@ -366,9 +367,8 @@ app.post('/messages', async (req, res) => {
     onTopic, // onTopic est maintenant juste basé sur les mots-clés
     flagged, // 'toxic', 'hors-sujet', or null
     flagReason: flagReason || null,
-    // On coche la case "Afficher" côté admin (hidden=false),
-    // mais on n'envoie pas au public si le message est flaggé
-    hidden: false,
+    // Si flaggé, masquer par défaut côté admin (cohérent avec l'affichage public)
+    hidden: Boolean(flagged),
     createdAt: new Date().toISOString()
   };
 
@@ -388,14 +388,27 @@ app.post('/messages', async (req, res) => {
 // Mettre à jour un message (pour la modération)
 app.patch('/messages/:id', async (req, res) => {
   const messageId = parseInt(req.params.id);
-  const { hidden } = req.body;
+  const { hidden, flagged, flagReason } = req.body;
 
-  if (typeof hidden !== 'boolean') {
-    return res.status(400).json({ error: 'Données invalides' });
+  // Validate payload (all optional)
+  if (
+    typeof hidden !== 'undefined' && typeof hidden !== 'boolean'
+  ) {
+    return res.status(400).json({ error: 'Champ hidden invalide' });
+  }
+  if (
+    typeof flagged !== 'undefined' && !(flagged === null || typeof flagged === 'string')
+  ) {
+    return res.status(400).json({ error: 'Champ flagged invalide' });
+  }
+  if (
+    typeof flagReason !== 'undefined' && !(flagReason === null || typeof flagReason === 'string')
+  ) {
+    return res.status(400).json({ error: 'Champ flagReason invalide' });
   }
 
   try {
-    const updatedMessage = await updateMessage(messageId, { hidden });
+    const updatedMessage = await updateMessage(messageId, { hidden, flagged, flagReason });
     io.emit('message-updated', updatedMessage);
     res.json(updatedMessage);
   } catch (error) {
