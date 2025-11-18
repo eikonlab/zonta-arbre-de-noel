@@ -239,6 +239,11 @@ const NEW_TOXIC_PATTERNS = [
   /liste de shindler/i,
   /Bardella notre exemple/i,
 
+  // Divisive messages - introducing religious/ethnic exclusions in support messages
+  /même les (juives?|musulmanes?|arabes?|noires?|blanches?)/i,
+  /(juives?|musulmanes?|arabes?).+(ne méritent pas|méritent)/i,
+  /sauf les (juives?|musulmanes?|arabes?)/i,
+
   // Insultes / Sexisme / Slang
   /pvt3/i,
   /s4l0p3 de féministes/i,
