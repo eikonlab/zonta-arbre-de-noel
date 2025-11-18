@@ -11,6 +11,9 @@
           <span v-if="!notifSubscribed">🔔 Activer les notifications</span>
           <span v-else>✅ Notifications activées</span>
         </button>
+        <div v-else-if="showNotifHelp" class="notif-help">
+          <small>📱 Notifications non disponibles</small>
+        </div>
         <button @click="handleLogout" class="btn btn-logout">
           🚪 Déconnexion
         </button>
@@ -44,41 +47,123 @@
         Aucun message à afficher avec les filtres actuels.
       </div>
 
-      <div v-else class="messages-grid">
-        <table class="messages-table">
-          <thead>
-            <tr>
-              <th>Nom</th>
-              <th>Status</th>
-              <th>Raison</th>
-              <th>Date</th>
-              <th>Texte</th>
-              <th>Afficher</th>
-              <th>Supprimer</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="message in filteredMessages"
-              :key="message.id"
-              :class="{
-                flagged: message.flagged,
-                hidden: message.hidden,
-                toxic: message.flagged && message.flagged.includes('toxic'),
-                'off-topic':
-                  message.flagged && message.flagged.includes('hors-sujet'),
-              }"
-            >
-              <td>
+      <div v-else class="messages-list">
+        <!-- Desktop Table View -->
+        <div class="desktop-view">
+          <table class="messages-table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Status</th>
+                <th>Raison</th>
+                <th>Date</th>
+                <th>Texte</th>
+                <th>Afficher</th>
+                <th>Supprimer</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="message in filteredMessages"
+                :key="message.id"
+                :class="{
+                  flagged: message.flagged,
+                  hidden: message.hidden,
+                  toxic: message.flagged && message.flagged.includes('toxic'),
+                  'off-topic':
+                    message.flagged && message.flagged.includes('hors-sujet'),
+                }"
+              >
+                <td>
+                  <span class="author">{{ message.author }}</span>
+                </td>
+                <td>
+                  <span
+                    v-if="message.toxicity !== null"
+                    class="toxicity-score"
+                    :class="getToxicityClass(message.toxicity)"
+                  >
+                    Toxicité: {{ Math.round(message.toxicity * 100) }}%
+                  </span>
+                  <span
+                    v-if="message.flagged"
+                    class="flag-badge"
+                    :class="getFlagClass(message.flagged)"
+                  >
+                    {{ message.flagged }}
+                  </span>
+                </td>
+                <td>
+                  <span
+                    v-if="message.flagReason"
+                    class="flag-reason"
+                    :title="message.flagReason"
+                  >
+                    {{ shortReason(message.flagReason) }}
+                  </span>
+                  <span v-else>-</span>
+                </td>
+                <td>
+                  <span class="date">{{ formatDate(message.createdAt) }}</span>
+                </td>
+                <td>
+                  <span class="message-content">{{ message.content }}</span>
+                </td>
+
+                <td>
+                  <label class="visibility-toggle">
+                    <input
+                      type="checkbox"
+                      :checked="!message.hidden && !message.flagged"
+                      :title="
+                        message.flagged
+                          ? `Message signalé (${message.flagged}) — ne s'affichera pas sur le mur public`
+                          : 'Afficher sur le mur'
+                      "
+                      @change="toggleVisibility(message, $event)"
+                    />
+                  </label>
+                </td>
+                <td>
+                  <button
+                    @click="deleteMessage(message.id)"
+                    class="btn btn-danger btn-small"
+                    title="Supprimer"
+                  >
+                    🗑️
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile Card View -->
+        <div class="mobile-view">
+          <div
+            v-for="message in filteredMessages"
+            :key="message.id"
+            class="message-card-mobile"
+            :class="{
+              flagged: message.flagged,
+              hidden: message.hidden,
+              toxic: message.flagged && message.flagged.includes('toxic'),
+              'off-topic':
+                message.flagged && message.flagged.includes('hors-sujet'),
+            }"
+          >
+            <div class="message-card-header">
+              <div class="message-card-meta">
                 <span class="author">{{ message.author }}</span>
-              </td>
-              <td>
+                <span class="date">{{ formatDate(message.createdAt) }}</span>
+              </div>
+              <div class="message-card-badges">
                 <span
                   v-if="message.toxicity !== null"
                   class="toxicity-score"
                   :class="getToxicityClass(message.toxicity)"
                 >
-                  Toxicité: {{ Math.round(message.toxicity * 100) }}%
+                  {{ Math.round(message.toxicity * 100) }}%
                 </span>
                 <span
                   v-if="message.flagged"
@@ -87,50 +172,37 @@
                 >
                   {{ message.flagged }}
                 </span>
-              </td>
-              <td>
-                <span
-                  v-if="message.flagReason"
-                  class="flag-reason"
-                  :title="message.flagReason"
-                >
-                  {{ shortReason(message.flagReason) }}
-                </span>
-                <span v-else>-</span>
-              </td>
-              <td>
-                <span class="date">{{ formatDate(message.createdAt) }}</span>
-              </td>
-              <td>
-                <span class="message-content">{{ message.content }}</span>
-              </td>
+              </div>
+            </div>
 
-              <td>
-                <label class="visibility-toggle">
-                  <input
-                    type="checkbox"
-                    :checked="!message.hidden && !message.flagged"
-                    :title="
-                      message.flagged
-                        ? `Message signalé (${message.flagged}) — ne s'affichera pas sur le mur public`
-                        : 'Afficher sur le mur'
-                    "
-                    @change="toggleVisibility(message, $event)"
-                  />
-                </label>
-              </td>
-              <td>
-                <button
-                  @click="deleteMessage(message.id)"
-                  class="btn btn-danger btn-small"
-                  title="Supprimer"
-                >
-                  🗑️
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+            <div class="message-card-content">
+              <p>{{ message.content }}</p>
+            </div>
+
+            <div v-if="message.flagReason" class="message-card-reason">
+              <small>{{ shortReason(message.flagReason) }}</small>
+            </div>
+
+            <div class="message-card-actions">
+              <label class="visibility-toggle-mobile">
+                <input
+                  type="checkbox"
+                  :checked="!message.hidden && !message.flagged"
+                  @change="toggleVisibility(message, $event)"
+                />
+                <span>{{
+                  !message.hidden && !message.flagged ? "Visible" : "Masqué"
+                }}</span>
+              </label>
+              <button
+                @click="deleteMessage(message.id)"
+                class="btn btn-danger btn-small"
+              >
+                🗑️ Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -153,6 +225,7 @@ export default {
       showVisible: true,
       showHidden: true,
       showFlagged: true,
+      showNotifHelp: true,
     };
   },
 
@@ -525,6 +598,14 @@ export default {
   box-shadow: 0 8px 24px rgba(92, 51, 23, 0.4);
 }
 
+.notif-help {
+  background: rgba(92, 51, 23, 0.1);
+  color: #5c3317;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
 .btn-logout {
   background: rgba(92, 51, 23, 0.1);
   color: #5c3317;
@@ -540,6 +621,14 @@ export default {
   background: white;
   padding: 30px;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
+}
+
+.desktop-view {
+  display: block;
+}
+
+.mobile-view {
+  display: none;
 }
 
 .loading,
@@ -577,6 +666,122 @@ export default {
 .messages-table tr.hidden {
   opacity: 0.6;
   background: rgba(92, 51, 23, 0.05);
+}
+
+/* Mobile Card Styles */
+.message-card-mobile {
+  background: white;
+  border: 1px solid rgba(92, 51, 23, 0.15);
+  border-left: 4px solid #5c3317;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(92, 51, 23, 0.1);
+}
+
+.message-card-mobile.flagged,
+.message-card-mobile.toxic {
+  border-left-color: #ffc107;
+  background: #fff9e6;
+}
+
+.message-card-mobile.off-topic {
+  border-left-color: #6c757d;
+  background: #f8f9fa;
+}
+
+.message-card-mobile.hidden {
+  opacity: 0.6;
+  background: rgba(92, 51, 23, 0.05);
+}
+
+.message-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.message-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.message-card-meta .author {
+  font-weight: 700;
+  color: #5c3317;
+  font-size: 1.1em;
+}
+
+.message-card-meta .date {
+  color: rgba(92, 51, 23, 0.6);
+  font-size: 0.85em;
+}
+
+.message-card-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.message-card-content {
+  margin: 12px 0;
+  padding: 12px;
+  background: rgba(92, 51, 23, 0.03);
+  border-radius: 6px;
+}
+
+.message-card-content p {
+  margin: 0;
+  font-size: 1em;
+  line-height: 1.5;
+  color: #5c3317;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.message-card-reason {
+  margin: 8px 0;
+  padding: 6px 10px;
+  background: rgba(92, 51, 23, 0.08);
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: rgba(92, 51, 23, 0.7);
+}
+
+.message-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(92, 51, 23, 0.1);
+  gap: 10px;
+}
+
+.visibility-toggle-mobile {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+  color: #5c3317;
+  gap: 8px;
+  font-size: 0.95em;
+}
+
+.visibility-toggle-mobile input[type="checkbox"] {
+  transform: scale(1.3);
+  cursor: pointer;
+  accent-color: #5c3317;
+}
+
+.message-card-actions .btn {
+  white-space: nowrap;
 }
 
 .message-card {
@@ -749,43 +954,86 @@ export default {
   }
 
   .admin-header {
-    padding: 20px;
+    padding: 15px;
     flex-direction: column;
     align-items: stretch;
   }
 
   .admin-header h1 {
-    font-size: 2em;
+    font-size: 1.5em;
     text-align: center;
+    line-height: 1.3;
   }
 
   .header-actions {
     justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .header-actions .btn {
+    flex: 1;
+    min-width: 140px;
+    font-size: 0.9em;
+    padding: 10px 16px;
+  }
+
+  .notif-help {
+    flex: 1;
+    text-align: center;
+    min-width: 140px;
   }
 
   .controls {
+    padding: 15px;
     flex-direction: column;
     align-items: stretch;
   }
 
-  .filter-controls,
-  .action-controls {
-    justify-content: center;
-  }
-
-  .message-header {
+  .filter-controls {
     flex-direction: column;
-    align-items: stretch;
+    gap: 12px;
   }
 
-  .message-status {
-    align-items: flex-start;
+  .checkbox-container {
+    font-size: 1em;
+    padding: 8px 0;
   }
 
-  .message-actions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 15px;
+  .messages-container {
+    padding: 15px;
+  }
+
+  /* Hide desktop table on mobile */
+  .desktop-view {
+    display: none;
+  }
+
+  /* Show mobile cards on mobile */
+  .mobile-view {
+    display: block;
+  }
+
+  .loading,
+  .no-messages {
+    padding: 30px 15px;
+    font-size: 1.1em;
+  }
+}
+
+/* Tablet adjustments */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .admin-header h1 {
+    font-size: 2em;
+  }
+
+  .messages-table th,
+  .messages-table td {
+    padding: 10px 6px;
+    font-size: 0.9em;
+  }
+
+  .flag-reason {
+    max-width: 80px;
   }
 }
 </style>

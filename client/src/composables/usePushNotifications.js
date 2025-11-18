@@ -26,10 +26,24 @@ function urlBase64ToUint8Array(base64String) {
 
 export function usePushNotifications() {
   const checkSupport = () => {
-    isSupported.value = 'serviceWorker' in navigator && 'PushManager' in window;
-    if (isSupported.value) {
+    // Check for service worker, PushManager, and Notification API
+    const hasServiceWorker = 'serviceWorker' in navigator;
+    const hasPushManager = 'PushManager' in window;
+    const hasNotification = 'Notification' in window;
+
+    console.log('Push notification support check:', {
+      serviceWorker: hasServiceWorker,
+      pushManager: hasPushManager,
+      notification: hasNotification,
+      userAgent: navigator.userAgent
+    });
+
+    isSupported.value = hasServiceWorker && hasPushManager && hasNotification;
+
+    if (isSupported.value && hasNotification) {
       permission.value = Notification.permission;
     }
+
     return isSupported.value;
   };
 
