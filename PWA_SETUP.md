@@ -55,7 +55,7 @@ Example `.env`:
 PORT=8102
 IP=::
 TOKEN_EXPIRY_MS=120000
-PERSPECTIVE_API_KEY=your-perspective-api-key-here
+GOOGLE_API_KEY=your-perspective-api-key-here
 VAPID_PUBLIC_KEY=BN...your-public-key...
 VAPID_PRIVATE_KEY=AA...your-private-key...
 VAPID_SUBJECT=mailto:your-email@example.com
@@ -221,7 +221,7 @@ VAPID_PRIVATE_KEY=XcYuOaveTju8UjudoVaJvxdogm2cRlu_2RGZyIE3q9E
 VAPID_SUBJECT=mailto:your-production-email@zonta.org
 
 # Perspective API
-PERSPECTIVE_API_KEY=your-actual-api-key
+GOOGLE_API_KEY=your-actual-api-key
 ```
 
 #### 2. CORS Configuration

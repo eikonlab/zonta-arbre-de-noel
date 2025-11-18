@@ -10,7 +10,10 @@ Le projet est composé de 2 applications principales :
 
 - **Port** : 3001
 - API REST + Socket.IO pour le temps réel
-- Gestion des messages avec détection de toxicité (Perspective API)
+- **Modération automatique intelligente** :
+  - **Perspective API** (Google) : Détection de toxicité basée sur l'IA
+  - **Gemini Flash** (Google) : Détection hors-sujet contextuelle via LLM avec preprompt spécialisé
+  - **Patterns toxiques** : Regex pour détecter victim-blaming, sexisme, racisme, etc.
 - Système de tokens temporaires pour contrôler l'accès
 - Base de données SQLite pour persistance
 
@@ -45,10 +48,32 @@ Le client contient maintenant 3 modes d'exécution dans une seule structure :
 
 ## Démarrage rapide
 
-### 1. Serveur
+### 1. Serveur - Configuration
+
+Créez un fichier `.env` dans le dossier `/server` :
 
 ```bash
 cd server
+cp .env.example .env
+```
+
+Modifiez le fichier `.env` pour configurer les clés API :
+
+```env
+# Requis pour la modération
+PERSPECTIVE_API_KEY=your-google-perspective-api-key
+GEMINI_API_KEY=your-google-gemini-api-key
+
+# Optionnel (push notifications)
+VAPID_PUBLIC_KEY=your-vapid-public-key
+VAPID_PRIVATE_KEY=your-vapid-private-key
+```
+
+> **Note** : Les deux clés API (Perspective et Gemini) sont recommandées pour une modération optimale, mais le serveur fonctionnera en mode dégradé sans elles.
+
+Démarrez le serveur :
+
+```bash
 npm install
 npm start
 ```
@@ -95,7 +120,10 @@ npm run start:qr
 ## Workflow de modération
 
 1. **Messages publics** : Les utilisateurs postent via le client public (avec token valide)
-2. **Détection automatique** : Le serveur détecte automatiquement les contenus toxiques/hors-sujet
+2. **Détection automatique multi-niveaux** :
+   - **Patterns toxiques** : Regex pour identifier victim-blaming, insultes, sexisme, racisme
+   - **Perspective API** : Score de toxicité IA (seuil: 0.4)
+   - **Gemini Flash** : Analyse contextuelle pour détecter les messages hors-sujet via un preprompt spécialisé sur les violences faites aux femmes
 3. **Modération** : Les administrateurs utilisent le client admin pour :
    - Consulter tous les messages avec leurs scores de toxicité
    - Masquer les messages inappropriés (ils disparaissent du client public)

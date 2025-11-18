@@ -133,15 +133,15 @@ app.post('/debug/messages', async (req, res) => {
       // Simule l'appel API ou utilise la toxicité fournie
       let toxicity = debugTox;
 
-      // Nouvelle logique unifiée
-      const base = classifyContentSync(content);
-      let flagged = base.flagged;
-      let flagReason = base.flagReason;
-      const onTopic = base.onTopic;
+      // Nouvelle logique unifiée avec LLM
+      const classification = await classifyContent(content);
+      let flagged = classification.flagged;
+      let flagReason = classification.flagReason;
       if (!flagged && toxicity !== null && toxicity > PERSPECTIVE_THRESHOLD) {
         flagged = 'toxic';
         flagReason = `perspective:>${PERSPECTIVE_THRESHOLD}`;
       }
+      const onTopic = flagged !== 'hors-sujet';
 
       const messageData = {
         author,
@@ -166,9 +166,9 @@ app.post('/debug/messages', async (req, res) => {
   }
 });
 
-// --- LOGIQUE DE DETECTION (refacto cohérence de contexte) ---
+// --- MODERATION LOGIC ---
 
-// Normalisation de texte (accents, casse, espaces)
+// Normalize text (remove accents, lowercase, trim)
 function normalizeText(str) {
   return (str || '')
     .toString()
@@ -179,35 +179,6 @@ function normalizeText(str) {
     .replace(/\s+/g, ' ')
     .trim();
 }
-
-// Mots-clés du domaine (violences faites aux femmes, féminicides, etc.)
-const CONTEXT_DOMAIN_KEYWORDS = [
-  'violence', 'violent', 'violences',
-  'femme', 'femmes', 'fille', 'filles', 'genre',
-  'harcelement', 'harceler', 'harcelee', 'harcele',
-  'agression', 'agressions', 'agresse', 'agressee', 'agresseur',
-  'viol', 'viols', 'violeur', 'abus', 'abuse', 'abusee',
-  'controle', 'menace', 'menaces', 'insulte', 'insultes',
-  'psychologique', 'physique', 'sexuel', 'sexuelle', 'sexuelles',
-  'temoignage', 'temoigner',
-  'victime', 'victimes',
-  'consentement', 'dependance', 'financiere', 'economique', 'liberte',
-  'survivantes', 'courage', 'honte', 'force', 'silence', 'reconstruire', 'espoir', 'partir', 'peur', 'prison', 'amour', 'choix', 'voix', 'corps', 'droit', 'stop', 'non',
-  // féminicide et variantes
-  'feminicide', 'feminicides', 'stop feminicide', 'stop feminicides',
-  // violences conjugales/domestiques
-  'violence conjugale', 'violences conjugales', 'violence domestique', 'violences domestiques', 'maltraitance'
-];
-
-// Termes positifs d'empowerment / soutien (cohérents avec le contexte)
-const CONTEXT_POSITIVE_KEYWORDS = [
-  'egalite', 'egalite des sexes', 'droits des femmes', 'droits des femmes',
-  'sororite', 'soutien', 'je te crois', 'solidarite', 'respect', 'justice', 'autonomie', 'emancipation', 'empowerment', 'briser le silence',
-  // Solidarité et support collectif
-  'guerriere', 'guerrieres', 'battez', 'battre', 'combat', 'combattre',
-  'toutes', 'ensemble', 'avec vous', 'de tout coeur', 'courage a toutes',
-  'merci', 'bravo', 'fiere', 'fieres', 'unis', 'unies'
-];
 
 // Patterns TOXIQUES (prioritaires) – victim-blaming, insultes, sexisme, racisme, anti-feminisme, etc.
 const NEW_TOXIC_PATTERNS = [
@@ -271,46 +242,15 @@ const NEW_TOXIC_PATTERNS = [
   /molester par un nain/i // Coded / moquerie
 ];
 
-// Patterns HORS CONTEXTE (off-topic explicite, pubs/liens, sport, etc.)
-// Ceux-ci sont vérifiés APRÈS les patterns toxiques.
-const NEW_OFF_TOPIC_PATTERNS = [
-  // Sport / Salutations / Tech / Météo / Divers
-  /fribourg-gottéron/i,
-  /salut maman/i,
-  /match ce soir/i,
-  /dernier iphone/i,
-  /prix de l’essence/i,
-  /rêve d’aller au japon/i,
-  /putain de pluie/i,
-  /Laeticia la gourgandine/i,
 
-  // Politique / Conflits (non liés au sujet principal)
-  /la police tue/i, // Version générique
-  /free palestine/i,
-  /f\* les sionistes/i,
-  /la suisse complice/i,
-  /nique la police/i, // Classé Hors-Sujet dans votre CSV
-  /n\* les arabes/i, // Classé Hors-Sujet dans votre CSV
-  /VIVE HIT L’AIR/i, // Provocation Hors-Sujet
-
-  // Coded / Insultes (classés Hors-Sujet dans votre CSV)
-  /B!t3/i,
-  /trop d’arbre en suisse/i, // Coded
-  // Liens / pubs évidents
+// Note: Off-topic detection is now handled by LLM via checkTopicRelevance()
+// Only explicit spam/link patterns remain here for immediate filtering
+const EXPLICIT_SPAM_PATTERNS = [
   /https?:\/\//i,
   /www\./i,
   /\btelegram\b|\bwhatsapp\b|\binstagram\b|\btiktok\b/i,
   /\bpromo\b|\bvente\b|\bsolde\b|\bcasino\b/i
 ];
-
-// Est-ce cohérent avec le contexte ? (domain OR positif)
-function isOnContext(text) {
-  if (!text) return false;
-  const t = normalizeText(text);
-  const hasDomain = CONTEXT_DOMAIN_KEYWORDS.some(k => t.includes(k));
-  const hasPositive = CONTEXT_POSITIVE_KEYWORDS.some(k => t.includes(k));
-  return hasDomain || hasPositive;
-}
 
 // ** SEUIL PERSPECTIVE RECOMMANDÉ **
 // Votre seuil de 0.7 est trop élevé. Vos propres messages de debug ont des scores < 0.2
@@ -319,6 +259,8 @@ const PERSPECTIVE_THRESHOLD = 0.4;
 
 // Perspective API (appel réel)
 const { getToxicityScore } = require('./models/perspective');
+// LLM-based moderation for off-topic detection
+const { checkTopicRelevance } = require('./models/llmModeration');
 
 // Database
 const { getAllMessages, createMessage, updateMessage, deleteMessage, bulkUpdateMessages, getHiddenMessagesSince } = require('./models/database');
@@ -410,7 +352,7 @@ app.get('/analytics/hidden-messages', async (req, res) => {
   }
 });
 
-// Classification de contenu (synchrone, hors appel Perspective)
+// Classification de contenu (synchrone, hors appel Perspective et LLM)
 function firstMatchingPattern(patterns, text) {
   for (const re of patterns) {
     if (re.test(text)) return re;
@@ -422,50 +364,71 @@ function classifyContentSync(content) {
   // 1) Toxic patterns en premier
   const tox = firstMatchingPattern(NEW_TOXIC_PATTERNS, content);
   if (tox) {
-    return { flagged: 'toxic', onTopic: true, flagReason: `toxic:${tox}` };
+    return { flagged: 'toxic', flagReason: `toxic:${tox}` };
   }
-  // 2) Off-topic explicite
-  const off = firstMatchingPattern(NEW_OFF_TOPIC_PATTERNS, content);
-  if (off) {
-    return { flagged: 'hors-sujet', onTopic: false, flagReason: `off-topic:${off}` };
+  // 2) Explicit spam/links
+  const spam = firstMatchingPattern(EXPLICIT_SPAM_PATTERNS, content);
+  if (spam) {
+    return { flagged: 'hors-sujet', flagReason: `spam:${spam}` };
   }
-  // 3) Cohérence de contexte via mots-clés
-  const onTopic = isOnContext(content);
-  if (!onTopic) {
-    return { flagged: 'hors-sujet', onTopic, flagReason: 'context:missing' };
-  }
-  return { flagged: null, onTopic, flagReason: null };
+  // 3) Not flagged by patterns
+  return { flagged: null, flagReason: null };
 }
 
-// Poster un message (logique refactorisée)
+// Classification de contenu (asynchrone, avec LLM pour off-topic)
+async function classifyContent(content) {
+  // 1) Check synchronous patterns first (toxic + spam)
+  const syncResult = classifyContentSync(content);
+  if (syncResult.flagged) {
+    return syncResult;
+  }
+
+  // 2) Use LLM to check topic relevance
+  const llmResult = await checkTopicRelevance(content);
+  if (!llmResult.isOnTopic) {
+    return {
+      flagged: 'hors-sujet',
+      flagReason: `llm:${llmResult.reason || 'off-topic'}`
+    };
+  }
+
+  // 3) Not flagged
+  return { flagged: null, flagReason: null };
+}
+
+// Poster un message (logique refactorisée avec LLM)
 app.post('/messages', async (req, res) => {
   const { author, content } = req.body;
   if (!author || !content) return res.status(400).json({ error: 'Champs manquants' });
 
-  let toxicity = null;
-  try {
-    toxicity = await getToxicityScore(content);
-  } catch (e) {
-    console.warn('Échec récupération score toxicité:', e.message);
-  }
+  // Run Perspective API and LLM classification in parallel
+  const [toxicity, classification] = await Promise.all([
+    getToxicityScore(content).catch(e => {
+      console.warn('Échec récupération score toxicité:', e.message);
+      return null;
+    }),
+    classifyContent(content)
+  ]);
 
-  // --- LOGIQUE DE FLAGGING (refacto) ---
-  const base = classifyContentSync(content);
-  let flagged = base.flagged;
-  let flagReason = base.flagReason;
-  const onTopic = base.onTopic;
-  // Si pas encore flaggé et qu'on est dans le contexte, on regarde Perspective
+  // --- LOGIQUE DE FLAGGING (refacto avec LLM) ---
+  let flagged = classification.flagged;
+  let flagReason = classification.flagReason;
+
+  // Si pas encore flaggé, on regarde Perspective
   if (!flagged && toxicity !== null && toxicity > PERSPECTIVE_THRESHOLD) {
     flagged = 'toxic';
     flagReason = `perspective:>${PERSPECTIVE_THRESHOLD}`;
   }
+
+  // onTopic is true unless flagged as hors-sujet
+  const onTopic = flagged !== 'hors-sujet';
   // --- FIN LOGIQUE ---
 
   const messageData = {
     author,
     content,
     toxicity,
-    onTopic, // onTopic est maintenant juste basé sur les mots-clés
+    onTopic, // onTopic is true unless flagged as hors-sujet (determined by LLM)
     flagged, // 'toxic', 'hors-sujet', or null
     flagReason: flagReason || null,
     // Si flaggé, masquer par défaut côté admin (cohérent avec l'affichage public)
