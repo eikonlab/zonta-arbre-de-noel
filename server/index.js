@@ -202,7 +202,11 @@ const CONTEXT_DOMAIN_KEYWORDS = [
 // Termes positifs d'empowerment / soutien (cohérents avec le contexte)
 const CONTEXT_POSITIVE_KEYWORDS = [
   'egalite', 'egalite des sexes', 'droits des femmes', 'droits des femmes',
-  'sororite', 'soutien', 'je te crois', 'solidarite', 'respect', 'justice', 'autonomie', 'emancipation', 'empowerment', 'briser le silence'
+  'sororite', 'soutien', 'je te crois', 'solidarite', 'respect', 'justice', 'autonomie', 'emancipation', 'empowerment', 'briser le silence',
+  // Solidarité et support collectif
+  'guerriere', 'guerrieres', 'battez', 'battre', 'combat', 'combattre',
+  'toutes', 'ensemble', 'avec vous', 'de tout coeur', 'courage a toutes',
+  'merci', 'bravo', 'fiere', 'fieres', 'unis', 'unies'
 ];
 
 // Patterns TOXIQUES (prioritaires) – victim-blaming, insultes, sexisme, racisme, anti-feminisme, etc.
