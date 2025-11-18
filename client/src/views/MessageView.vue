@@ -3,7 +3,15 @@
     class="message-display"
     :style="{ backgroundColor: currentMessageColor }"
   >
-    <div class="canvas-container">
+    <!-- Simple mode: just centered text -->
+    <div v-if="SIMPLE_MODE" class="simple-container">
+      <div class="simple-text">
+        {{ currentMessage?.content || "Chargement du message..." }}
+      </div>
+    </div>
+
+    <!-- Normal mode: canvas animation -->
+    <div v-else class="canvas-container">
       <canvas ref="canvasEl"></canvas>
     </div>
   </div>
@@ -23,6 +31,9 @@ import {
 const route = useRoute();
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 const socket = io(API_URL, { transports: ["websocket"] });
+
+// DEBUG MODE: Set to true for simple display without path animation (Raspberry Pi)
+const SIMPLE_MODE = true;
 
 // Messages/state
 const messages = ref([]);
@@ -541,6 +552,7 @@ function stopAnimation() {
 
 // Setup everything for current template/message
 function prepareScene() {
+  if (SIMPLE_MODE) return; // Skip canvas setup in simple mode
   if (!canvasEl.value) return;
   computeViewport();
   buildSamples();
@@ -607,9 +619,18 @@ onMounted(async () => {
     }
   });
 
-  // Prepare and start
-  prepareScene();
-  startAnimation();
+  // Simple mode: rotate messages every 5 seconds
+  if (SIMPLE_MODE) {
+    setInterval(() => {
+      currentMessage.value = nextMessage.value;
+      nextMessage.value = pickNextDifferent();
+      currentMessageColor.value = getRandomColor();
+    }, 5000);
+  } else {
+    // Normal mode: prepare canvas and start animation
+    prepareScene();
+    startAnimation();
+  }
 });
 
 onUnmounted(() => {
@@ -631,6 +652,26 @@ onUnmounted(() => {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: auto;
   touch-action: none;
+}
+
+.simple-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100vh;
+  padding: 2rem;
+}
+
+.simple-text {
+  color: white;
+  font-size: 3rem;
+  font-weight: 600;
+  text-align: center;
+  max-width: 90%;
+  line-height: 1.3;
+  transition: opacity 400ms ease;
 }
 
 .canvas-container {
