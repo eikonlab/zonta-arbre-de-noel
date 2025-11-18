@@ -205,6 +205,15 @@ const NEW_TOXIC_PATTERNS = [
   /j'aurais mis mon agresseur au tapis/i,
   /violence psychologique, non \?/i, // Banalisation
 
+  // Victim-blaming - blaming women for violence against them
+  /femmes?.+(part|responsabilit|faute|cause)/i,
+  /si elle.+(portait|mettait|habillait).+(pas|moins)/i,
+  /si elles?.+(portaient|mettaient|habillaient).+(pas|moins)/i,
+  /leur part de responsabilit/i,
+  /(un peu|aussi).+responsables?/i,
+  /vivraient mieux si/i,
+  /auraient (dû|du).+(éviter|faire attention)/i,
+
   // Dénonciations (selon votre CSV)
   /MAEL VIOLEUR/i,
   /agresser par Titouan/i,
