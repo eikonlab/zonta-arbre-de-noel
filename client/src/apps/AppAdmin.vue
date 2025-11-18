@@ -2,6 +2,19 @@
   <div class="admin-container">
     <header class="admin-header">
       <h1>Administration & Modération des Messages</h1>
+      <div class="header-actions">
+        <button
+          @click="toggleNotifications"
+          class="btn btn-notification"
+          v-if="notifSupported"
+        >
+          <span v-if="!notifSubscribed">🔔 Activer les notifications</span>
+          <span v-else>✅ Notifications activées</span>
+        </button>
+        <button @click="handleLogout" class="btn btn-logout">
+          🚪 Déconnexion
+        </button>
+      </div>
     </header>
 
     <div class="controls">
@@ -126,6 +139,9 @@
 <script>
 import axios from "axios";
 import { io } from "socket.io-client";
+import { useAuth } from "../composables/useAuth";
+import { usePushNotifications } from "../composables/usePushNotifications";
+import { useRouter } from "vue-router";
 
 export default {
   name: "AdminApp",
@@ -137,6 +153,44 @@ export default {
       showVisible: true,
       showHidden: true,
       showFlagged: true,
+    };
+  },
+
+  setup() {
+    const { logout } = useAuth();
+    const router = useRouter();
+    const {
+      isSupported: notifSupported,
+      isSubscribed: notifSubscribed,
+      subscribe,
+      unsubscribe,
+    } = usePushNotifications();
+
+    const handleLogout = () => {
+      logout();
+      router.push("/admin/login");
+    };
+
+    const toggleNotifications = async () => {
+      try {
+        if (notifSubscribed.value) {
+          await unsubscribe();
+        } else {
+          await subscribe();
+        }
+      } catch (error) {
+        console.error("Error toggling notifications:", error);
+        alert(
+          "Erreur lors de la gestion des notifications. Vérifiez que vous avez autorisé les notifications."
+        );
+      }
+    };
+
+    return {
+      handleLogout,
+      notifSupported,
+      notifSubscribed,
+      toggleNotifications,
     };
   },
 
@@ -301,7 +355,6 @@ export default {
   display: inline-block;
   padding: 2px 10px;
   margin-right: 5px;
-  border-radius: 12px;
   font-size: 0.85em;
   font-weight: 600;
   color: white;
@@ -322,23 +375,33 @@ export default {
 .admin-header {
   background: white;
   padding: 30px;
-  border-radius: 24px;
   margin-bottom: 30px;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
 }
 
 .admin-header h1 {
   margin: 0;
   color: #5c3317;
   font-size: 2.5em;
-  text-align: center;
   font-weight: 700;
+  flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .controls {
   background: white;
   padding: 20px;
-  border-radius: 24px;
   margin-bottom: 30px;
   display: flex;
   justify-content: space-between;
@@ -379,7 +442,6 @@ export default {
 .btn {
   padding: 12px 24px;
   border: none;
-  border-radius: 12px;
   cursor: pointer;
   font-size: 1em;
   font-weight: 600;
@@ -412,6 +474,29 @@ export default {
   box-shadow: 0 8px 24px rgba(92, 51, 23, 0.4);
 }
 
+.btn-notification {
+  background: #5c3317;
+  color: #fdbc2e;
+  box-shadow: 0 4px 16px rgba(92, 51, 23, 0.3);
+  white-space: nowrap;
+}
+
+.btn-notification:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(92, 51, 23, 0.4);
+}
+
+.btn-logout {
+  border: 2px solid #5c3317;
+  background: rgba(92, 51, 23, 0.1);
+  color: #5c3317;
+}
+
+.btn-logout:hover {
+  background: #5c3317;
+  color: #fdbc2e;
+}
+
 .btn-danger {
   border: 2px solid #5c3317;
   background: rgba(92, 51, 23, 0.1);
@@ -428,9 +513,31 @@ export default {
   font-size: 0.9em;
 }
 
+.btn-notification {
+  background: #5c3317;
+  color: #fdbc2e;
+  box-shadow: 0 4px 16px rgba(92, 51, 23, 0.3);
+  white-space: nowrap;
+}
+
+.btn-notification:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(92, 51, 23, 0.4);
+}
+
+.btn-logout {
+  background: rgba(92, 51, 23, 0.1);
+  color: #5c3317;
+  border: 2px solid #5c3317;
+}
+
+.btn-logout:hover {
+  background: #5c3317;
+  color: #fdbc2e;
+}
+
 .messages-container {
   background: white;
-  border-radius: 24px;
   padding: 30px;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
 }
@@ -474,7 +581,6 @@ export default {
 
 .message-card {
   background: white;
-  border-radius: 16px;
   padding: 20px;
   box-shadow: 0 4px 16px rgba(92, 51, 23, 0.1);
   border-left: 5px solid #5c3317;
@@ -541,7 +647,6 @@ export default {
 
 .flag-badge {
   padding: 2px 4px;
-  border-radius: 20px;
   margin: 3px;
   display: inline-block;
   font-size: 0.75em;
@@ -567,7 +672,6 @@ export default {
   display: inline-block;
   padding: 2px 6px;
   font-size: 0.65em;
-  border-radius: 6px;
   background: rgba(92, 51, 23, 0.08);
   color: #5c3317;
   max-width: 120px;
@@ -583,7 +687,6 @@ export default {
   font-size: 0.75em;
   margin: 3px;
   display: inline-block;
-  border-radius: 10px;
   font-weight: bold;
 }
 
@@ -647,10 +750,17 @@ export default {
 
   .admin-header {
     padding: 20px;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .admin-header h1 {
     font-size: 2em;
+    text-align: center;
+  }
+
+  .header-actions {
+    justify-content: center;
   }
 
   .controls {

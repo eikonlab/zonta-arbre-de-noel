@@ -5,13 +5,73 @@ const { Server } = require('socket.io');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const crypto = require('crypto');
+const webpush = require('web-push');
+require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
 
-app.use(cors());
+// CORS configuration for production
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://client.zonta.eikon.ch',
+  'https://www.client.zonta.eikon.ch',
+];
+
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true
+  }
+});
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
 app.use(bodyParser.json());
+
+// Configure web-push with VAPID keys
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:jminguely@gmail.com',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
+
+// Store push subscriptions in memory (in production, use a database)
+const pushSubscriptions = new Set();
+
+// Helper function to send push notification to all subscribers
+async function sendPushNotification(payload) {
+  const notifications = [];
+
+  for (const subscription of pushSubscriptions) {
+    try {
+      await webpush.sendNotification(subscription, JSON.stringify(payload));
+      notifications.push({ subscription, success: true });
+    } catch (error) {
+      console.error('Error sending push notification:', error);
+      // If subscription is no longer valid, remove it
+      if (error.statusCode === 410) {
+        pushSubscriptions.delete(subscription);
+      }
+      notifications.push({ subscription, success: false, error });
+    }
+  }
+
+  return notifications;
+}
 
 // Token management system
 const TOKEN_EXPIRY_MS = parseInt(process.env.TOKEN_EXPIRY_MS) || 120000;
@@ -260,6 +320,43 @@ const { getToxicityScore } = require('./models/perspective');
 const { getAllMessages, createMessage, updateMessage, deleteMessage, bulkUpdateMessages, getHiddenMessagesSince } = require('./models/database');
 const { countHiddenMessagesSince } = require('./models/database');
 
+// Push notification endpoints
+app.post('/push/subscribe', (req, res) => {
+  const subscription = req.body;
+
+  if (!subscription || !subscription.endpoint) {
+    return res.status(400).json({ error: 'Invalid subscription' });
+  }
+
+  pushSubscriptions.add(subscription);
+  console.log(`New push subscription: ${subscription.endpoint.substring(0, 50)}...`);
+
+  res.json({ success: true, message: 'Subscription saved' });
+});
+
+app.post('/push/unsubscribe', (req, res) => {
+  const subscription = req.body;
+
+  if (!subscription || !subscription.endpoint) {
+    return res.status(400).json({ error: 'Invalid subscription' });
+  }
+
+  // Find and remove subscription
+  for (const sub of pushSubscriptions) {
+    if (sub.endpoint === subscription.endpoint) {
+      pushSubscriptions.delete(sub);
+      console.log(`Push subscription removed: ${subscription.endpoint.substring(0, 50)}...`);
+      break;
+    }
+  }
+
+  res.json({ success: true, message: 'Subscription removed' });
+});
+
+app.get('/push/vapid-public-key', (req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
 // Récupérer tous les messages
 app.get('/messages', async (req, res) => {
   try {
@@ -376,6 +473,24 @@ app.post('/messages', async (req, res) => {
     const message = await createMessage(messageData);
     if (message.flagged) io.to('admin').emit('admin-new-message', message);
     else io.emit('new-message', message);
+
+    // Send push notification if message is flagged
+    if (message.flagged && pushSubscriptions.size > 0) {
+      const flagType = message.flagged === 'toxic' ? 'toxique' : 'hors-sujet';
+      await sendPushNotification({
+        title: 'Nouveau message signalé',
+        body: `Message ${flagType}: "${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}"`,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: 'message-flagged',
+        data: {
+          messageId: message.id,
+          flagged: message.flagged,
+          url: '/admin'
+        }
+      });
+    }
+
     res.status(201).json(message);
   } catch (error) {
     console.error('Error creating message:', error);

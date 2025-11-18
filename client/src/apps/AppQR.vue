@@ -88,7 +88,7 @@ async function fetchToken() {
 
     // Generate QR code with dark brown color
     qrCodeDataUrl.value = await QRCode.toDataURL(currentUrl.value, {
-      width: 400,
+      width: 2048,
       margin: 2,
       color: {
         dark: "#5C3317", // Dark brown
@@ -140,9 +140,14 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
   background-color: #fdbc2e;
-  padding: 2rem;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+  touch-action: none;
 }
 
 .loading {
@@ -185,7 +190,6 @@ onUnmounted(() => {
   background: #5c3317;
   color: #fdbc2e;
   border: none;
-  border-radius: 12px;
   padding: 1rem 2rem;
   cursor: pointer;
   font-weight: 600;
@@ -202,7 +206,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3rem;
+  justify-content: center;
+  gap: 2rem;
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
 .qr-code-link {
@@ -217,10 +226,16 @@ onUnmounted(() => {
 
 .qr-code-container {
   background: white;
-  padding: 2rem;
-  border-radius: 24px;
+  padding: 0;
+  border-radius: 0;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
   transition: box-shadow 0.2s;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: calc(100vh - 12rem);
+  max-width: 100%;
 }
 
 .qr-code-link:hover .qr-code-container {
@@ -229,10 +244,11 @@ onUnmounted(() => {
 
 .qr-code {
   display: block;
-  width: 400px;
-  height: 400px;
-  max-width: 90vw;
-  max-height: 90vw;
+  width: 100%;
+  height: 100%;
+  max-width: calc(100vh - 16rem);
+  max-height: calc(100vh - 16rem);
+  object-fit: contain;
 }
 
 .countdown {
@@ -240,11 +256,9 @@ onUnmounted(() => {
   font-size: 4rem;
   font-weight: 700;
   color: #5c3317;
-  background: white;
-  padding: 1.5rem 3rem;
-  border-radius: 20px;
-  box-shadow: 0 8px 30px rgba(92, 51, 23, 0.2);
+  padding: 1rem;
   min-width: 200px;
   text-align: center;
+  flex-shrink: 0;
 }
 </style>

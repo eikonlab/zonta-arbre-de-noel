@@ -49,7 +49,7 @@
           required
         ></textarea>
         <button type="submit" class="modern-btn" :disabled="!hasValidToken">
-          {{ hasValidToken ? "Envoyer" : "Token invalide" }}
+          {{ hasValidToken ? "Envoyer" : "Rescannez le code QR" }}
         </button>
       </form>
     </div>
@@ -142,13 +142,14 @@ async function sendMessage() {
   min-height: 100vh;
   background-color: #fdbc2e;
   padding: 2rem;
+  overscroll-behavior: none;
+  touch-action: pan-y;
 }
 
 .form-container {
   max-width: 600px;
   width: 100%;
   background: white;
-  border-radius: 24px;
   padding: 2.5rem;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
 }
@@ -157,7 +158,6 @@ async function sendMessage() {
   text-align: center;
   padding: 3rem 2rem;
   background: white;
-  border-radius: 24px;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
 }
 
@@ -179,7 +179,6 @@ async function sendMessage() {
   text-align: center;
   padding: 3rem 2rem;
   background: white;
-  border-radius: 24px;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
 }
 
@@ -201,7 +200,6 @@ async function sendMessage() {
   text-align: center;
   padding: 4rem 3rem;
   background: white;
-  border-radius: 24px;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
   max-width: 600px;
 }
@@ -230,7 +228,6 @@ async function sendMessage() {
 .token-warning {
   background: #fff3cd;
   border: 2px solid #5c3317;
-  border-radius: 16px;
   padding: 1rem 1.5rem;
   margin-bottom: 1.5rem;
   text-align: center;
@@ -257,7 +254,6 @@ async function sendMessage() {
   background: rgba(92, 51, 23, 0.05);
   padding: 1.5rem;
   border-left: 4px solid #5c3317;
-  border-radius: 16px;
   font-size: 1rem;
   line-height: 1.6rem;
   color: #5c3317;
@@ -275,7 +271,6 @@ async function sendMessage() {
   flex: 1;
   padding: 1rem 1.25rem;
   border: 2px solid rgba(92, 51, 23, 0.2);
-  border-radius: 12px;
   font-size: 1rem;
   background: #fff;
   transition: border 0.2s, box-shadow 0.2s;
@@ -303,7 +298,6 @@ async function sendMessage() {
   background: #5c3317;
   color: #fdbc2e;
   border: none;
-  border-radius: 12px;
   padding: 1rem 2rem;
   font-weight: 600;
   font-size: 1.1rem;

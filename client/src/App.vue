@@ -8,7 +8,7 @@
 
 <style>
 html {
-  overscroll-behavior: none;
+  overscroll-behavior-y: none;
 }
 
 body {

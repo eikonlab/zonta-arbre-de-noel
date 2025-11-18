@@ -628,6 +628,9 @@ onUnmounted(() => {
   flex-direction: column;
   padding: 0;
   margin: 0;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+  touch-action: none;
 }
 
 .canvas-container {

@@ -41,6 +41,10 @@ jobs:
         run: npm run build
         env:
           VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
+          VITE_CLIENT_URL: ${{ vars.VITE_CLIENT_URL }}
+          VITE_ADMIN_LOGIN: ${{ vars.VITE_ADMIN_LOGIN }}
+          VITE_ADMIN_PASSWORD: ${{ vars.VITE_ADMIN_PASSWORD }}
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
 
       - name: Install SSH Host Key
         id: deploy
