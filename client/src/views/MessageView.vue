@@ -137,7 +137,7 @@ let textTotalWidth = 0;
 
 // Animation
 let offsetS = 0; // first glyph offset along path (CSS px)
-const TARGET_FPS = 50;
+const TARGET_FPS = 30;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let rafId = null;
 let lastTs = 0;
@@ -148,7 +148,7 @@ const FONT_SIZE = 139; // px
 const FONT_FAMILY = "Arial, sans-serif";
 const FONT_WEIGHT = 600;
 const LETTER_SPACING = 2; // px additional spacing per glyph
-const ROTATE_GLYPHS = true; // set false to not rotate characters (faster)
+const ROTATE_GLYPHS = false; // set false to not rotate characters (faster)
 
 // Utils: quadratic Bezier
 function qPoint(p0, p1, p2, t) {
@@ -324,7 +324,11 @@ function computeViewport() {
   canvas.style.height = view.cssH + "px";
 
   // Context
-  ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+  ctx = canvas.getContext("2d", {
+    alpha: true,
+    desynchronized: true,
+    willReadFrequently: true,
+  });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(view.dpr, view.dpr); // draw in CSS pixels
 
@@ -558,18 +562,18 @@ function animationLoop(ts) {
     accumulator -= steps * FRAME_INTERVAL;
   }
 
-  rafId = setTimeout(() => animationLoop(performance.now()), FRAME_INTERVAL);
+  rafId = requestAnimationFrame(animationLoop);
 }
 
 function startAnimation() {
   stopAnimation();
   lastTs = 0;
   accumulator = 0;
-  rafId = setTimeout(() => animationLoop(performance.now()), FRAME_INTERVAL);
+  rafId = requestAnimationFrame(animationLoop);
 }
 function stopAnimation() {
   if (rafId) {
-    clearTimeout(rafId);
+    cancelAnimationFrame(rafId);
     rafId = null;
   }
   lastTs = 0;
