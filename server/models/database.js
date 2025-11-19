@@ -26,6 +26,7 @@ function initDatabase() {
       flagReason TEXT,
       hidden INTEGER DEFAULT 0,
       priorityNumber INTEGER,
+      ipAddress TEXT,
       createdAt TEXT NOT NULL
     )
   `, (err) => {
@@ -42,6 +43,7 @@ function initDatabase() {
         const hasHiddenColumn = columns.some(col => col.name === 'hidden');
         const hasFlagReasonColumn = columns.some(col => col.name === 'flagReason');
         const hasPriorityNumberColumn = columns.some(col => col.name === 'priorityNumber');
+        const hasIpAddressColumn = columns.some(col => col.name === 'ipAddress');
         if (!hasHiddenColumn) {
           console.log('Migrating database: adding hidden column');
           db.run('ALTER TABLE messages ADD COLUMN hidden INTEGER DEFAULT 0', (err) => {
@@ -69,6 +71,16 @@ function initDatabase() {
               console.error('Error adding priorityNumber column:', err);
             } else {
               console.log('Migration complete: priorityNumber column added');
+            }
+          });
+        }
+        if (!hasIpAddressColumn) {
+          console.log('Migrating database: adding ipAddress column');
+          db.run('ALTER TABLE messages ADD COLUMN ipAddress TEXT', (err) => {
+            if (err) {
+              console.error('Error adding ipAddress column:', err);
+            } else {
+              console.log('Migration complete: ipAddress column added');
             }
           });
         }
@@ -111,11 +123,11 @@ function getAllMessages() {
 // Create a new message
 function createMessage(message) {
   return new Promise((resolve, reject) => {
-    const { author, content, toxicity, onTopic, flagged, flagReason, hidden, priorityNumber, createdAt } = message;
+    const { author, content, toxicity, onTopic, flagged, flagReason, hidden, priorityNumber, ipAddress, createdAt } = message;
     db.run(
-      `INSERT INTO messages (author, content, toxicity, onTopic, flagged, flagReason, hidden, priorityNumber, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [author, content, toxicity, onTopic ? 1 : 0, flagged, flagReason, hidden ? 1 : 0, priorityNumber, createdAt],
+      `INSERT INTO messages (author, content, toxicity, onTopic, flagged, flagReason, hidden, priorityNumber, ipAddress, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [author, content, toxicity, onTopic ? 1 : 0, flagged, flagReason, hidden ? 1 : 0, priorityNumber, ipAddress, createdAt],
       function (err) {
         if (err) {
           reject(err);
@@ -252,6 +264,18 @@ function countHiddenMessagesSince(sinceISO) {
   });
 }
 
+// Check if IP has posted in the last 24 hours
+function hasPostedToday(ipAddress) {
+  return new Promise((resolve, reject) => {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const sql = `SELECT COUNT(*) as count FROM messages WHERE ipAddress = ? AND datetime(createdAt) >= datetime(?)`;
+    db.get(sql, [ipAddress, oneDayAgo], (err, row) => {
+      if (err) return reject(err);
+      resolve(row.count > 0);
+    });
+  });
+}
+
 module.exports = {
   db,
   getAllMessages,
@@ -260,5 +284,6 @@ module.exports = {
   deleteMessage,
   bulkUpdateMessages,
   getHiddenMessagesSince,
-  countHiddenMessagesSince
+  countHiddenMessagesSince,
+  hasPostedToday
 };

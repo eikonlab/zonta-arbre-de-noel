@@ -40,14 +40,25 @@
           placeholder="Votre nom"
           required
         />
-        <textarea
-          v-model.trim="content"
-          class="modern-input modern-textarea"
-          placeholder="Votre message"
-          rows="4"
-          maxlength="140"
-          required
-        ></textarea>
+        <div class="textarea-wrapper">
+          <textarea
+            v-model.trim="content"
+            class="modern-input modern-textarea"
+            placeholder="Votre message"
+            rows="4"
+            maxlength="140"
+            required
+          ></textarea>
+          <div
+            class="char-counter"
+            :class="{
+              warning: remainingChars < 20,
+              danger: remainingChars < 10,
+            }"
+          >
+            {{ remainingChars }} / {{ maxLength }}
+          </div>
+        </div>
         <button type="submit" class="modern-btn" :disabled="!hasValidToken">
           {{ hasValidToken ? "Envoyer" : "Rescannez le code QR" }}
         </button>
@@ -57,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
@@ -68,6 +79,10 @@ const hasValidToken = ref(false);
 const tokenChecked = ref(false);
 const messageSent = ref(false);
 const reviewNeeded = ref(false);
+
+// Character counter
+const maxLength = 140;
+const remainingChars = computed(() => maxLength - content.value.length);
 
 // Set page title
 document.title = "Zonta - Ajouter un message";
@@ -116,6 +131,11 @@ async function sendMessage() {
     return;
   }
 
+  if (content.value.length > maxLength) {
+    alert(`Le message ne peut pas dépasser ${maxLength} caractères.`);
+    return;
+  }
+
   try {
     const { data } = await axios.post(`${API_URL}/messages`, {
       author: author.value,
@@ -129,7 +149,19 @@ async function sendMessage() {
     }
   } catch (error) {
     console.error("Error sending message:", error);
-    alert("Erreur lors de l'envoi du message. Veuillez réessayer.");
+    if (error.response?.status === 429) {
+      alert(
+        error.response.data.error ||
+          "Vous avez déjà posté un message aujourd'hui. Veuillez réessayer demain."
+      );
+    } else if (
+      error.response?.status === 400 &&
+      error.response.data.error?.includes("140")
+    ) {
+      alert(error.response.data.error);
+    } else {
+      alert("Erreur lors de l'envoi du message. Veuillez réessayer.");
+    }
   }
 }
 </script>
@@ -292,6 +324,27 @@ async function sendMessage() {
   min-height: 120px;
   font-family: inherit;
   line-height: 1.6;
+}
+
+.textarea-wrapper {
+  position: relative;
+}
+
+.char-counter {
+  text-align: right;
+  font-size: 0.875rem;
+  color: rgba(92, 51, 23, 0.6);
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+.char-counter.warning {
+  color: #d97706;
+}
+
+.char-counter.danger {
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .modern-btn {

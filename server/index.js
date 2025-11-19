@@ -278,7 +278,7 @@ const { getToxicityScore } = require('./models/perspective');
 const { checkTopicRelevance } = require('./models/llmModeration');
 
 // Database
-const { getAllMessages, createMessage, updateMessage, deleteMessage, bulkUpdateMessages, getHiddenMessagesSince } = require('./models/database');
+const { getAllMessages, createMessage, updateMessage, deleteMessage, bulkUpdateMessages, getHiddenMessagesSince, hasPostedToday } = require('./models/database');
 const { countHiddenMessagesSince } = require('./models/database');
 
 // Push notification endpoints
@@ -416,6 +416,28 @@ app.post('/messages', async (req, res) => {
   const { author, content } = req.body;
   if (!author || !content) return res.status(400).json({ error: 'Champs manquants' });
 
+  // Enforce 140 character limit
+  if (content.length > 140) {
+    return res.status(400).json({ error: 'Le message ne peut pas dépasser 140 caractères' });
+  }
+
+  // Get client IP address
+  const ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() ||
+    req.headers['x-real-ip'] ||
+    req.connection.remoteAddress ||
+    req.socket.remoteAddress;
+
+  // Check if IP has already posted today
+  try {
+    const alreadyPosted = await hasPostedToday(ipAddress);
+    if (alreadyPosted) {
+      return res.status(429).json({ error: 'Vous avez déjà posté un message aujourd\'hui. Veuillez réessayer demain.' });
+    }
+  } catch (error) {
+    console.error('Error checking rate limit:', error);
+    // Continue anyway if rate limit check fails
+  }
+
   // Run Perspective API and LLM classification in parallel
   const [toxicity, classification] = await Promise.all([
     getToxicityScore(content).catch(e => {
@@ -452,6 +474,7 @@ app.post('/messages', async (req, res) => {
     // Si flaggé, masquer par défaut côté admin (cohérent avec l'affichage public)
     hidden: Boolean(flagged),
     priorityNumber,
+    ipAddress,
     createdAt: new Date().toISOString()
   };
 
