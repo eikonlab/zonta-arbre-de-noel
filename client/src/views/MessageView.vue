@@ -324,11 +324,7 @@ function computeViewport() {
   canvas.style.height = view.cssH + "px";
 
   // Context
-  ctx = canvas.getContext("2d", {
-    alpha: true,
-    desynchronized: true,
-    willReadFrequently: true,
-  });
+  ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(view.dpr, view.dpr); // draw in CSS pixels
 
