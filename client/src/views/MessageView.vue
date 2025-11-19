@@ -41,7 +41,7 @@ const currentMessage = ref(null);
 const nextMessage = ref(null);
 const currentMessageColor = ref("#fdbc2e");
 const currentTextColor = ref("#fff");
-const animationSpeed = 80; // px/s constant speed (reduced for Pi)
+const animationSpeed = 70; // px/s constant speed (reduced for Pi)
 
 // Page title
 document.title = "Zonta - Ecran";
@@ -144,18 +144,18 @@ let textTotalWidth = 0;
 
 // Animation
 let offsetS = 0; // first glyph offset along path (CSS px)
-const TARGET_FPS = 30;
+const TARGET_FPS = 20;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let rafId = null;
 let lastTs = 0;
 let accumulator = 0;
 
 // Font settings
-const FONT_SIZE = 100; // px (reduced for Pi performance)
+const FONT_SIZE = 90; // px (reduced for Pi performance)
 const FONT_FAMILY = "Arial, sans-serif";
 const FONT_WEIGHT = 600;
 const LETTER_SPACING = 2; // px additional spacing per glyph
-const ROTATE_GLYPHS = false; // set false to not rotate characters (faster)
+const ROTATE_GLYPHS = true; // set false to not rotate characters (faster)
 
 // Utils: quadratic Bezier
 function qPoint(p0, p1, p2, t) {
