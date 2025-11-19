@@ -57,8 +57,7 @@
                 <th>Status</th>
                 <th>Date</th>
                 <th>Texte</th>
-                <th>Afficher</th>
-                <th>Supprimer</th>
+                <th colspan="2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -101,7 +100,9 @@
                 </td>
                 <td>
                   <div class="date-container">
-                    <span class="date">{{ formatDate(message.createdAt) }}</span>
+                    <span class="date">{{
+                      formatDate(message.createdAt)
+                    }}</span>
                     <span v-if="message.priorityNumber" class="priority-pill">
                       Écran {{ message.priorityNumber }}
                     </span>
@@ -112,26 +113,42 @@
                 </td>
 
                 <td>
-                  <label class="visibility-toggle">
+                  <label
+                    class="toggle-switch"
+                    :title="
+                      message.flagged
+                        ? `Message signalé (${message.flagged}) — ne s'affichera pas sur le mur public`
+                        : 'Afficher sur le mur'
+                    "
+                  >
                     <input
                       type="checkbox"
                       :checked="!message.hidden && !message.flagged"
-                      :title="
-                        message.flagged
-                          ? `Message signalé (${message.flagged}) — ne s'affichera pas sur le mur public`
-                          : 'Afficher sur le mur'
-                      "
                       @change="toggleVisibility(message, $event)"
                     />
+                    <span class="toggle-slider"></span>
                   </label>
                 </td>
                 <td>
                   <button
                     @click="deleteMessage(message.id)"
-                    class="btn btn-danger btn-small"
+                    class="btn-delete"
                     title="Supprimer"
                   >
-                    🗑️
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                   </button>
                 </td>
               </tr>
@@ -190,21 +207,37 @@
             </div>
 
             <div class="message-card-actions">
-              <label class="visibility-toggle-mobile">
+              <label class="toggle-switch-mobile">
                 <input
                   type="checkbox"
                   :checked="!message.hidden && !message.flagged"
                   @change="toggleVisibility(message, $event)"
                 />
-                <span>{{
+                <span class="toggle-slider-mobile"></span>
+                <span class="toggle-label">{{
                   !message.hidden && !message.flagged ? "Visible" : "Masqué"
                 }}</span>
               </label>
               <button
                 @click="deleteMessage(message.id)"
-                class="btn btn-danger btn-small"
+                class="btn-delete-mobile"
+                title="Supprimer"
               >
-                🗑️ Supprimer
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                <span>Supprimer</span>
               </button>
             </div>
           </div>
@@ -659,7 +692,6 @@ export default {
   vertical-align: top;
 }
 .messages-table th {
-  background: rgba(92, 51, 23, 0.05);
   font-weight: bold;
   color: #5c3317;
   border-bottom: 2px solid #5c3317;
@@ -670,8 +702,7 @@ export default {
   border-left: 5px solid #ffc107;
 }
 .messages-table tr.hidden {
-  opacity: 0.6;
-  background: rgba(92, 51, 23, 0.05);
+  opacity: 0.4;
 }
 
 /* Mobile Card Styles */
@@ -697,8 +728,7 @@ export default {
 }
 
 .message-card-mobile.hidden {
-  opacity: 0.6;
-  background: rgba(92, 51, 23, 0.05);
+  opacity: 0.4;
 }
 
 .message-card-header {
@@ -754,7 +784,6 @@ export default {
 .message-card-reason {
   margin: 8px 0;
   padding: 8px 10px;
-  background: rgba(92, 51, 23, 0.05);
   border-left: 3px solid rgba(92, 51, 23, 0.3);
   border-radius: 4px;
   font-size: 0.85em;
@@ -773,20 +802,89 @@ export default {
   gap: 10px;
 }
 
-.visibility-toggle-mobile {
-  display: flex;
+/* Mobile Toggle Switch */
+.toggle-switch-mobile {
+  position: relative;
+  display: inline-flex;
   align-items: center;
+  gap: 10px;
   cursor: pointer;
+}
+
+.toggle-switch-mobile input[type="checkbox"] {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider-mobile {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  background-color: rgba(92, 51, 23, 0.2);
+  border: 2px solid rgba(92, 51, 23, 0.3);
+  transition: all 0.3s ease;
+  border-radius: 34px;
+}
+
+.toggle-slider-mobile:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #5c3317;
+  transition: all 0.3s ease;
+  border-radius: 50%;
+}
+
+.toggle-switch-mobile input:checked + .toggle-slider-mobile {
+  background-color: #5c3317;
+  border-color: #5c3317;
+}
+
+.toggle-switch-mobile input:checked + .toggle-slider-mobile:before {
+  transform: translateX(24px);
+  background-color: #fdbc2e;
+}
+
+.toggle-label {
   font-weight: 600;
   color: #5c3317;
-  gap: 8px;
   font-size: 0.95em;
 }
 
-.visibility-toggle-mobile input[type="checkbox"] {
-  transform: scale(1.3);
+/* Mobile Delete Button */
+.btn-delete-mobile {
+  background: transparent;
+  border: 2px solid rgba(92, 51, 23, 0.3);
+  color: #5c3317;
+  padding: 8px 16px;
   cursor: pointer;
-  accent-color: #5c3317;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.95em;
+  transition: all 0.3s ease;
+}
+
+.btn-delete-mobile:hover {
+  background: #5c3317;
+  border-color: #5c3317;
+  color: #fdbc2e;
+}
+
+.btn-delete-mobile svg {
+  transition: transform 0.3s ease;
+}
+
+.btn-delete-mobile:hover svg {
+  transform: rotate(90deg);
 }
 
 .message-card-actions .btn {
@@ -822,8 +920,7 @@ export default {
 }
 
 .message-card.hidden {
-  opacity: 0.6;
-  background: rgba(92, 51, 23, 0.05);
+  opacity: 0.4;
 }
 
 .message-header {
@@ -952,6 +1049,7 @@ export default {
   margin: 15px 0;
   font-size: 1.1em;
   line-height: 1.6;
+  background: #faf9f8;
   color: #5c3317;
   word-wrap: break-word;
 }
@@ -967,23 +1065,83 @@ export default {
   gap: 10px;
 }
 
-.visibility-toggle {
-  display: flex;
-  align-items: center;
+/* Toggle Switch Styles */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
   cursor: pointer;
-  font-weight: 600;
+}
+
+.toggle-switch input[type="checkbox"] {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(92, 51, 23, 0.2);
+  border: 2px solid rgba(92, 51, 23, 0.3);
+  transition: all 0.3s ease;
+  border-radius: 34px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #5c3317;
+  transition: all 0.3s ease;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #5c3317;
+  border-color: #5c3317;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+  background-color: #fdbc2e;
+}
+
+.toggle-switch:hover .toggle-slider {
+  box-shadow: 0 0 8px rgba(92, 51, 23, 0.3);
+}
+
+/* Delete Button Styles */
+.btn-delete {
+  background: transparent;
+  border: 2px solid rgba(92, 51, 23, 0.3);
   color: #5c3317;
-}
-
-.visibility-toggle input[type="checkbox"] {
-  margin-right: 10px;
-  transform: scale(1.2);
+  padding: 2px;
   cursor: pointer;
-  accent-color: #5c3317;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  width: 28;
+  height: 28px;
 }
 
-.toggle-label {
-  font-size: 1em;
+.btn-delete:hover {
+  background: #5c3317;
+  border-color: #5c3317;
+  color: #fdbc2e;
+}
+
+.btn-delete svg {
+  display: block;
 }
 
 @media (max-width: 768px) {
