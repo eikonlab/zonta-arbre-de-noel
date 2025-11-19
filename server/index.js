@@ -152,6 +152,7 @@ app.post('/debug/messages', async (req, res) => {
         flagReason: flagReason || null,
         // If flagged, default to hidden so admin sees it as not displayed
         hidden: Boolean(flagged),
+        priorityNumber: Math.floor(Math.random() * 5) + 1,
         createdAt: new Date().toISOString()
       };
       const message = await createMessage(messageData);
@@ -438,6 +439,9 @@ app.post('/messages', async (req, res) => {
   const onTopic = flagged !== 'hors-sujet';
   // --- FIN LOGIQUE ---
 
+  // Generate random priority number from 1 to 5
+  const priorityNumber = Math.floor(Math.random() * 5) + 1;
+
   const messageData = {
     author,
     content,
@@ -447,6 +451,7 @@ app.post('/messages', async (req, res) => {
     flagReason: flagReason || null,
     // Si flaggé, masquer par défaut côté admin (cohérent avec l'affichage public)
     hidden: Boolean(flagged),
+    priorityNumber,
     createdAt: new Date().toISOString()
   };
 

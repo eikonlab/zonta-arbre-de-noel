@@ -25,6 +25,7 @@ function initDatabase() {
       flagged TEXT,
       flagReason TEXT,
       hidden INTEGER DEFAULT 0,
+      priorityNumber INTEGER,
       createdAt TEXT NOT NULL
     )
   `, (err) => {
@@ -40,6 +41,7 @@ function initDatabase() {
         }
         const hasHiddenColumn = columns.some(col => col.name === 'hidden');
         const hasFlagReasonColumn = columns.some(col => col.name === 'flagReason');
+        const hasPriorityNumberColumn = columns.some(col => col.name === 'priorityNumber');
         if (!hasHiddenColumn) {
           console.log('Migrating database: adding hidden column');
           db.run('ALTER TABLE messages ADD COLUMN hidden INTEGER DEFAULT 0', (err) => {
@@ -57,6 +59,16 @@ function initDatabase() {
               console.error('Error adding flagReason column:', err);
             } else {
               console.log('Migration complete: flagReason column added');
+            }
+          });
+        }
+        if (!hasPriorityNumberColumn) {
+          console.log('Migrating database: adding priorityNumber column');
+          db.run('ALTER TABLE messages ADD COLUMN priorityNumber INTEGER', (err) => {
+            if (err) {
+              console.error('Error adding priorityNumber column:', err);
+            } else {
+              console.log('Migration complete: priorityNumber column added');
             }
           });
         }
@@ -99,11 +111,11 @@ function getAllMessages() {
 // Create a new message
 function createMessage(message) {
   return new Promise((resolve, reject) => {
-    const { author, content, toxicity, onTopic, flagged, flagReason, hidden, createdAt } = message;
+    const { author, content, toxicity, onTopic, flagged, flagReason, hidden, priorityNumber, createdAt } = message;
     db.run(
-      `INSERT INTO messages (author, content, toxicity, onTopic, flagged, flagReason, hidden, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [author, content, toxicity, onTopic ? 1 : 0, flagged, flagReason, hidden ? 1 : 0, createdAt],
+      `INSERT INTO messages (author, content, toxicity, onTopic, flagged, flagReason, hidden, priorityNumber, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [author, content, toxicity, onTopic ? 1 : 0, flagged, flagReason, hidden ? 1 : 0, priorityNumber, createdAt],
       function (err) {
         if (err) {
           reject(err);

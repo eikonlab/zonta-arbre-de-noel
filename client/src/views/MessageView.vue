@@ -50,6 +50,9 @@ const templateId = computed(() => parseInt(route.params.id) || 1);
 const currentTemplate = computed(() => getTemplateById(templateId.value));
 const templates = messageTemplates;
 
+// Message counter for priority system (1 priority message every 3 messages)
+const messageCount = ref(0);
+
 const visibleMessages = computed(() =>
   messages.value.filter(
     (msg) =>
@@ -60,7 +63,28 @@ const visibleMessages = computed(() =>
   )
 );
 
+// Get priority messages: messages with matching priorityNumber (template ID) within last hour
+const priorityMessages = computed(() => {
+  const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
+  return visibleMessages.value.filter(msg => {
+    if (!msg.priorityNumber || msg.priorityNumber !== templateId.value) {
+      return false;
+    }
+    const msgTime = new Date(msg.createdAt).getTime();
+    return msgTime >= oneHourAgo;
+  });
+});
+
 function getRandomMessage() {
+  messageCount.value++;
+  
+  // Every 3rd message, try to show a priority message
+  if (messageCount.value % 3 === 0 && priorityMessages.value.length > 0) {
+    const randomIndex = Math.floor(Math.random() * priorityMessages.value.length);
+    return priorityMessages.value[randomIndex];
+  }
+  
+  // Otherwise, show a regular message
   const available = visibleMessages.value;
   if (available.length === 0) return null;
   const randomIndex = Math.floor(Math.random() * available.length);
