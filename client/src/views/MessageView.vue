@@ -40,6 +40,7 @@ const messages = ref([]);
 const currentMessage = ref(null);
 const nextMessage = ref(null);
 const currentMessageColor = ref("#2563eb");
+const currentTextColor = ref("#fff");
 const animationSpeed = 80; // px/s constant speed (reduced for Pi)
 
 // Page title
@@ -496,8 +497,8 @@ function renderFrame(dtMs) {
 
   // Draw text glyphs along path
   ctx.save();
-  // Text is white; background color is bound to currentMessageColor with CSS transition
-  ctx.fillStyle = "#fff";
+  // Text color is dynamic; background color is bound to currentMessageColor with CSS transition
+  ctx.fillStyle = currentTextColor.value;
   ctx.font = `${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -538,7 +539,13 @@ function renderFrame(dtMs) {
     setTimeout(() => {
       currentMessage.value = nextMessage.value;
       nextMessage.value = pickNextDifferent();
-      currentMessageColor.value = getRandomColor();
+      if (isPriority(currentMessage.value)) {
+        currentMessageColor.value = "#fff";
+        currentTextColor.value = getRandomColor();
+      } else {
+        currentMessageColor.value = getRandomColor();
+        currentTextColor.value = "#fff";
+      }
       // relayout for new message
       layoutText(currentMessage.value?.content || "");
       // restart from right outside
@@ -599,10 +606,25 @@ async function loadMessages() {
   }
 }
 
+function isPriority(msg) {
+  if (!msg) return false;
+  return (
+    msg.priorityNumber &&
+    msg.priorityNumber === templateId.value &&
+    Date.now() - new Date(msg.createdAt).getTime() < 60 * 60 * 1000
+  );
+}
+
 function updateMessage() {
   currentMessage.value = getRandomMessage();
   nextMessage.value = pickNextDifferent();
-  currentMessageColor.value = getRandomColor();
+  if (isPriority(currentMessage.value)) {
+    currentMessageColor.value = "#fff";
+    currentTextColor.value = getRandomColor();
+  } else {
+    currentMessageColor.value = getRandomColor();
+    currentTextColor.value = "#fff";
+  }
   // prepare canvas for new message and template
   prepareScene();
 }
