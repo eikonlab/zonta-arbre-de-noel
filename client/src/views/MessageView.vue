@@ -40,7 +40,7 @@ const messages = ref([]);
 const currentMessage = ref(null);
 const nextMessage = ref(null);
 const currentMessageColor = ref("#2563eb");
-const animationSpeed = 120; // px/s constant speed
+const animationSpeed = 80; // px/s constant speed (reduced for Pi)
 
 // Page title
 document.title = "Zonta - Ecran";
@@ -144,7 +144,7 @@ let lastTs = 0;
 let accumulator = 0;
 
 // Font settings
-const FONT_SIZE = 139; // px
+const FONT_SIZE = 100; // px (reduced for Pi performance)
 const FONT_FAMILY = "Arial, sans-serif";
 const FONT_WEIGHT = 600;
 const LETTER_SPACING = 2; // px additional spacing per glyph
@@ -315,7 +315,8 @@ function computeViewport() {
   const rect = canvas.parentElement.getBoundingClientRect();
   view.cssW = Math.max(1, Math.floor(rect.width));
   view.cssH = Math.max(1, Math.floor(rect.height));
-  view.dpr = window.devicePixelRatio || 1;
+  // Cap DPR at 1 on low-powered devices for better performance
+  view.dpr = Math.min(window.devicePixelRatio || 1, 1);
 
   // Resize backing store
   canvas.width = Math.floor(view.cssW * view.dpr);
@@ -325,6 +326,7 @@ function computeViewport() {
 
   // Context
   ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+  ctx.imageSmoothingEnabled = false; // Faster rendering on Pi
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(view.dpr, view.dpr); // draw in CSS pixels
 
@@ -355,8 +357,8 @@ function buildSamples() {
       // Estimate segment length in design space
       const L = approxQuadLen(p0, p1, p2);
 
-      // Decide sample count for ~8px resolution in CSS pixels after scaling
-      const targetStepCss = 8;
+      // Decide sample count for ~16px resolution in CSS pixels after scaling
+      const targetStepCss = 16;
       const targetStepDesign = targetStepCss / Math.max(view.scale, 1e-6);
       const steps = Math.max(8, Math.ceil(L / targetStepDesign));
 
@@ -386,8 +388,8 @@ function buildSamples() {
       // Estimate segment length in design space
       const L = approxCubicLen(p0, p1, p2, p3);
 
-      // Decide sample count for ~8px resolution in CSS pixels after scaling
-      const targetStepCss = 8;
+      // Decide sample count for ~16px resolution in CSS pixels after scaling
+      const targetStepCss = 16;
       const targetStepDesign = targetStepCss / Math.max(view.scale, 1e-6);
       const steps = Math.max(8, Math.ceil(L / targetStepDesign));
 
@@ -489,8 +491,8 @@ function clearCanvas() {
 function renderFrame(dtMs) {
   clearCanvas();
 
-  // Optional: draw path line
-  drawPathLine();
+  // Optional: draw path line (disabled for performance)
+  // drawPathLine();
 
   // Draw text glyphs along path
   ctx.save();
