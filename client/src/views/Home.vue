@@ -307,6 +307,7 @@ async function sendMessage() {
   background: #fff;
   transition: border 0.2s, box-shadow 0.2s;
   color: #5c3317;
+  border-radius: 12px;
 }
 
 .modern-input::placeholder {
@@ -320,6 +321,7 @@ async function sendMessage() {
 }
 
 .modern-textarea {
+  width: 100%;
   resize: vertical;
   min-height: 120px;
   font-family: inherit;
@@ -348,6 +350,7 @@ async function sendMessage() {
 }
 
 .modern-btn {
+  border-radius: 12px;
   background: #5c3317;
   color: #fdbc2e;
   border: none;
