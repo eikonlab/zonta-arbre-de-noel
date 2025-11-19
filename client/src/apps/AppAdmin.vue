@@ -55,7 +55,6 @@
               <tr>
                 <th>Nom</th>
                 <th>Status</th>
-                <th>Raison</th>
                 <th>Date</th>
                 <th>Texte</th>
                 <th>Afficher</th>
@@ -78,33 +77,35 @@
                   <span class="author">{{ message.author }}</span>
                 </td>
                 <td>
-                  <span
-                    v-if="message.toxicity !== null"
-                    class="toxicity-score"
-                    :class="getToxicityClass(message.toxicity)"
-                  >
-                    Toxicité: {{ Math.round(message.toxicity * 100) }}%
-                  </span>
-                  <span
-                    v-if="message.flagged"
-                    class="flag-badge"
-                    :class="getFlagClass(message.flagged)"
-                  >
-                    {{ message.flagged }}
-                  </span>
+                  <div class="status-container">
+                    <div class="status-badges">
+                      <span
+                        v-if="message.toxicity !== null"
+                        class="toxicity-score"
+                        :class="getToxicityClass(message.toxicity)"
+                      >
+                        Toxicité: {{ Math.round(message.toxicity * 100) }}%
+                      </span>
+                      <span
+                        v-if="message.flagged"
+                        class="flag-badge"
+                        :class="getFlagClass(message.flagged)"
+                      >
+                        {{ message.flagged }}
+                      </span>
+                    </div>
+                    <div v-if="message.flagReason" class="status-reason">
+                      {{ message.flagReason }}
+                    </div>
+                  </div>
                 </td>
                 <td>
-                  <span
-                    v-if="message.flagReason"
-                    class="flag-reason"
-                    :title="message.flagReason"
-                  >
-                    {{ shortReason(message.flagReason) }}
-                  </span>
-                  <span v-else>-</span>
-                </td>
-                <td>
-                  <span class="date">{{ formatDate(message.createdAt) }}</span>
+                  <div class="date-container">
+                    <span class="date">{{ formatDate(message.createdAt) }}</span>
+                    <span v-if="message.priorityNumber" class="priority-pill">
+                      Écran {{ message.priorityNumber }}
+                    </span>
+                  </div>
                 </td>
                 <td>
                   <span class="message-content">{{ message.content }}</span>
@@ -155,7 +156,12 @@
             <div class="message-card-header">
               <div class="message-card-meta">
                 <span class="author">{{ message.author }}</span>
-                <span class="date">{{ formatDate(message.createdAt) }}</span>
+                <div class="date-priority-group">
+                  <span class="date">{{ formatDate(message.createdAt) }}</span>
+                  <span v-if="message.priorityNumber" class="priority-pill">
+                    Écran {{ message.priorityNumber }}
+                  </span>
+                </div>
               </div>
               <div class="message-card-badges">
                 <span
@@ -175,12 +181,12 @@
               </div>
             </div>
 
-            <div class="message-card-content">
-              <p>{{ message.content }}</p>
+            <div v-if="message.flagReason" class="message-card-reason">
+              {{ message.flagReason }}
             </div>
 
-            <div v-if="message.flagReason" class="message-card-reason">
-              <small>{{ shortReason(message.flagReason) }}</small>
+            <div class="message-card-content">
+              <p>{{ message.content }}</p>
             </div>
 
             <div class="message-card-actions">
@@ -747,11 +753,14 @@ export default {
 
 .message-card-reason {
   margin: 8px 0;
-  padding: 6px 10px;
-  background: rgba(92, 51, 23, 0.08);
+  padding: 8px 10px;
+  background: rgba(92, 51, 23, 0.05);
+  border-left: 3px solid rgba(92, 51, 23, 0.3);
   border-radius: 4px;
   font-size: 0.85em;
   color: rgba(92, 51, 23, 0.7);
+  font-style: italic;
+  word-break: break-word;
 }
 
 .message-card-actions {
@@ -873,18 +882,47 @@ export default {
   color: #333;
 }
 
-.flag-reason {
+.status-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.status-reason {
+  font-size: 0.8em;
+  color: rgba(92, 51, 23, 0.7);
+  font-style: italic;
+  word-break: break-word;
+}
+
+.date-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-priority-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.priority-pill {
   display: inline-block;
-  padding: 2px 6px;
-  font-size: 0.65em;
-  background: rgba(92, 51, 23, 0.08);
-  color: #5c3317;
-  max-width: 120px;
+  padding: 2px 8px;
+  font-size: 0.75em;
+  font-weight: 600;
+  color: white;
+  background: #5c3317;
+  border-radius: 12px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: help;
-  border: 1px solid rgba(92, 51, 23, 0.15);
 }
 
 .toxicity-score {
