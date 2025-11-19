@@ -33,7 +33,7 @@ const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 const socket = io(API_URL, { transports: ["websocket"] });
 
 // DEBUG MODE: Set to true for simple display without path animation (Raspberry Pi)
-const SIMPLE_MODE = true;
+const SIMPLE_MODE = false;
 
 // Messages/state
 const messages = ref([]);
