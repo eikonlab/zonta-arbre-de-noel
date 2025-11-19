@@ -39,7 +39,7 @@ const SIMPLE_MODE = false;
 const messages = ref([]);
 const currentMessage = ref(null);
 const nextMessage = ref(null);
-const currentMessageColor = ref("#2563eb");
+const currentMessageColor = ref("#fdbc2e");
 const currentTextColor = ref("#fff");
 const animationSpeed = 80; // px/s constant speed (reduced for Pi)
 
