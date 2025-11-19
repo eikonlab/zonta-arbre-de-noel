@@ -79,8 +79,15 @@ const priorityMessages = computed(() => {
 function getRandomMessage() {
   messageCount.value++;
 
-  // Every 3rd message, try to show a priority message
-  if (messageCount.value % 3 === 0 && priorityMessages.value.length > 0) {
+  const available = visibleMessages.value;
+  if (available.length === 0) return null;
+
+  // Only try to show a priority message every 3rd message if there are at least 2 visible messages
+  if (
+    available.length > 1 &&
+    messageCount.value % 3 === 0 &&
+    priorityMessages.value.length > 0
+  ) {
     const randomIndex = Math.floor(
       Math.random() * priorityMessages.value.length
     );
@@ -88,8 +95,6 @@ function getRandomMessage() {
   }
 
   // Otherwise, show a regular message
-  const available = visibleMessages.value;
-  if (available.length === 0) return null;
   const randomIndex = Math.floor(Math.random() * available.length);
   return available[randomIndex];
 }
@@ -101,7 +106,8 @@ function pickNextDifferent() {
     candidate &&
     currentMessage.value &&
     candidate.id === currentMessage.value.id &&
-    attempts < 10
+    attempts < 10 &&
+    visibleMessages.value.length > 1
   ) {
     candidate = getRandomMessage();
     attempts++;
