@@ -59,9 +59,15 @@
             {{ remainingChars }} / {{ maxLength }}
           </div>
         </div>
-        <button type="submit" class="modern-btn" :disabled="!hasValidToken || sending">
+        <button
+          type="submit"
+          class="modern-btn"
+          :disabled="!hasValidToken || sending"
+        >
           <span v-if="sending">Envoi…</span>
-          <span v-else>{{ hasValidToken ? "Envoyer" : "Rescannez le code QR" }}</span>
+          <span v-else>{{
+            hasValidToken ? "Envoyer" : "Rescannez le code QR"
+          }}</span>
         </button>
       </form>
     </div>

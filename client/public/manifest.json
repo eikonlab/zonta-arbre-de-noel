@@ -1,7 +1,7 @@
 {
   "name": "Zonta - Administration des Messages",
   "short_name": "Zonta Admin",
-  "description": "Administration et modération des messages Zonta",
+  "description": "Modération des messages Zonta",
   "start_url": "/admin",
   "display": "standalone",
   "background_color": "#fdbc2e",

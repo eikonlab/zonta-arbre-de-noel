@@ -1,7 +1,7 @@
 <template>
   <div class="admin-container">
     <header class="admin-header">
-      <h1>Administration & Modération des Messages</h1>
+      <h1>Modération des Messages</h1>
       <div class="header-actions">
         <button
           @click="toggleNotifications"
