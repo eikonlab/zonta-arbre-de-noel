@@ -276,6 +276,20 @@ function hasPostedToday(ipAddress) {
   });
 }
 
+// Check if IP can post (not exceeding POSTS_PER_DAY)
+function canPost(ipAddress) {
+  return new Promise((resolve, reject) => {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const sql = `SELECT COUNT(*) as count FROM messages WHERE ipAddress = ? AND datetime(createdAt) >= datetime(?)`;
+    db.get(sql, [ipAddress, oneDayAgo], (err, row) => {
+      if (err) return reject(err);
+      resolve(row.count < POSTS_PER_DAY);
+    });
+  });
+}
+
+const POSTS_PER_DAY = parseInt(process.env.POSTS_PER_DAY, 10) || 5;
+
 module.exports = {
   db,
   getAllMessages,
@@ -285,5 +299,6 @@ module.exports = {
   bulkUpdateMessages,
   getHiddenMessagesSince,
   countHiddenMessagesSince,
-  hasPostedToday
+  hasPostedToday,
+  canPost // <-- export the new function
 };
