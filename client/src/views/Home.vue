@@ -59,8 +59,9 @@
             {{ remainingChars }} / {{ maxLength }}
           </div>
         </div>
-        <button type="submit" class="modern-btn" :disabled="!hasValidToken">
-          {{ hasValidToken ? "Envoyer" : "Rescannez le code QR" }}
+        <button type="submit" class="modern-btn" :disabled="!hasValidToken || sending">
+          <span v-if="sending">Envoi…</span>
+          <span v-else>{{ hasValidToken ? "Envoyer" : "Rescannez le code QR" }}</span>
         </button>
       </form>
     </div>
@@ -79,6 +80,7 @@ const hasValidToken = ref(false);
 const tokenChecked = ref(false);
 const messageSent = ref(false);
 const reviewNeeded = ref(false);
+const sending = ref(false);
 
 // Character counter
 const maxLength = 140;
@@ -136,6 +138,9 @@ async function sendMessage() {
     return;
   }
 
+  if (sending.value) return;
+  sending.value = true;
+
   try {
     const { data } = await axios.post(`${API_URL}/messages`, {
       author: author.value,
@@ -162,6 +167,8 @@ async function sendMessage() {
     } else {
       alert("Erreur lors de l'envoi du message. Veuillez réessayer.");
     }
+  } finally {
+    sending.value = false;
   }
 }
 </script>
