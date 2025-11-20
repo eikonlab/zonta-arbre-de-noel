@@ -1049,7 +1049,6 @@ export default {
   margin: 15px 0;
   font-size: 1.1em;
   line-height: 1.6;
-  background: #faf9f8;
   color: #5c3317;
   word-wrap: break-word;
 }
