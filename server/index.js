@@ -427,15 +427,15 @@ app.post('/messages', async (req, res) => {
     req.connection.remoteAddress ||
     req.socket.remoteAddress;
 
-  // Check if IP has already posted today
+  // Check if IP has exceeded daily post limit
   try {
-    const alreadyPosted = await hasPostedToday(ipAddress);
-    if (alreadyPosted) {
-      return res.status(429).json({ error: 'Vous avez déjà posté un message aujourd\'hui. Veuillez réessayer demain.' });
+    const canPost = await require('./models/database').canPost(ipAddress);
+    if (!canPost) {
+      return res.status(429).json({ error: `Vous avez atteint la limite de ${process.env.POSTS_PER_DAY || 5} messages par jour.` });
     }
   } catch (error) {
-    console.error('Error checking rate limit:', error);
-    // Continue anyway if rate limit check fails
+    console.error('Error checking post limit:', error);
+    return res.status(500).json({ error: 'Erreur lors de la vérification de la limite de messages.' });
   }
 
   // Run Perspective API and LLM classification in parallel
