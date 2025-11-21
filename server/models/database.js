@@ -99,6 +99,21 @@ function initDatabase() {
       });
     }
   });
+
+  // Create subscriptions table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      endpoint TEXT PRIMARY KEY,
+      keys TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating subscriptions table:', err);
+    } else {
+      console.log('Subscriptions table ready');
+    }
+  });
 }
 
 // Get all messages
@@ -288,6 +303,55 @@ function canPost(ipAddress) {
   });
 }
 
+// Add a push subscription
+function addSubscription(subscription) {
+  return new Promise((resolve, reject) => {
+    const { endpoint, keys } = subscription;
+    const createdAt = new Date().toISOString();
+    db.run(
+      `INSERT OR REPLACE INTO subscriptions (endpoint, keys, createdAt) VALUES (?, ?, ?)`,
+      [endpoint, JSON.stringify(keys), createdAt],
+      function (err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ success: true });
+        }
+      }
+    );
+  });
+}
+
+// Remove a push subscription
+function removeSubscription(endpoint) {
+  return new Promise((resolve, reject) => {
+    db.run('DELETE FROM subscriptions WHERE endpoint = ?', [endpoint], function (err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ success: true });
+      }
+    });
+  });
+}
+
+// Get all push subscriptions
+function getAllSubscriptions() {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM subscriptions', [], (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        const subscriptions = rows.map(row => ({
+          endpoint: row.endpoint,
+          keys: JSON.parse(row.keys)
+        }));
+        resolve(subscriptions);
+      }
+    });
+  });
+}
+
 const POSTS_PER_DAY = parseInt(process.env.POSTS_PER_DAY, 10) || 5;
 
 module.exports = {
@@ -300,5 +364,8 @@ module.exports = {
   getHiddenMessagesSince,
   countHiddenMessagesSince,
   hasPostedToday,
-  canPost // <-- export the new function
+  canPost,
+  addSubscription,
+  removeSubscription,
+  getAllSubscriptions
 };

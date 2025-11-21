@@ -161,6 +161,17 @@ export function usePushNotifications() {
       if (sub) {
         subscription.value = sub;
         isSubscribed.value = true;
+
+        // Re-sync subscription with server to ensure it exists in DB
+        // (Useful if server database was reset or during migration)
+        fetch(`${API_URL}/push/subscribe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(sub.toJSON())
+        }).catch(err => console.error('Error syncing subscription:', err));
+
         return true;
       }
     } catch (error) {

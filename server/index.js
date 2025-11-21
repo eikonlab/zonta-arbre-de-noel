@@ -27,9 +27,6 @@ const app = express();
 // Add JSON body parsing middleware (for POST requests)
 app.use(express.json());
 
-// Ensure pushSubscriptions is defined as a Set
-const pushSubscriptions = new Set();
-
 // --- CORS CONFIGURATION ---
 app.use(cors({
   origin: [
@@ -80,6 +77,16 @@ app.post('/debug/messages', async (req, res) => {
       createdMessages.push(message);
       io.to('admin').emit('admin-new-message', message);
     }
+
+    if (createdMessages.length > 0) {
+      sendPushNotification({
+        title: 'Messages de debug',
+        body: `${createdMessages.length} nouveaux messages de debug ajoutés`,
+        data: { url: '/admin' },
+        tag: 'debug-messages'
+      });
+    }
+
     res.json({ status: 'ok', count: createdMessages.length });
   } catch (error) {
     console.error('Error creating debug messages:', error);
@@ -196,40 +203,78 @@ const PERSPECTIVE_THRESHOLD = 0.4;
 
 
 // Database
-const { getAllMessages, createMessage, updateMessage, deleteMessage, bulkUpdateMessages, getHiddenMessagesSince, hasPostedToday } = require('./models/database');
+const { getAllMessages, createMessage, updateMessage, deleteMessage, bulkUpdateMessages, getHiddenMessagesSince, hasPostedToday, addSubscription, removeSubscription, getAllSubscriptions } = require('./models/database');
 const { countHiddenMessagesSince } = require('./models/database');
 
+// Configure web-push
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:admin@zonta.eikon.ch',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+  console.log('VAPID keys configured');
+} else {
+  console.warn('VAPID keys not configured. Push notifications will not work.');
+}
+
+// Helper to send push notifications
+async function sendPushNotification(payload) {
+  try {
+    const subscriptions = await getAllSubscriptions();
+    console.log(`Sending push notification to ${subscriptions.length} subscribers`);
+
+    const notifications = subscriptions.map(sub => {
+      return webpush.sendNotification(sub, JSON.stringify(payload))
+        .catch(err => {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            // Subscription has expired or is no longer valid
+            console.log(`Subscription expired/invalid: ${sub.endpoint}`);
+            return removeSubscription(sub.endpoint);
+          }
+          console.error('Error sending notification:', err);
+        });
+    });
+
+    await Promise.all(notifications);
+  } catch (error) {
+    console.error('Error sending push notifications:', error);
+  }
+}
+
 // Push notification endpoints
-app.post('/push/subscribe', (req, res) => {
+app.post('/push/subscribe', async (req, res) => {
   const subscription = req.body;
 
   if (!subscription || !subscription.endpoint) {
     return res.status(400).json({ error: 'Invalid subscription' });
   }
 
-  pushSubscriptions.add(subscription);
-  console.log(`New push subscription: ${subscription.endpoint.substring(0, 50)}...`);
-
-  res.json({ success: true, message: 'Subscription saved' });
+  try {
+    await addSubscription(subscription);
+    console.log(`New push subscription: ${subscription.endpoint.substring(0, 50)}...`);
+    res.json({ success: true, message: 'Subscription saved' });
+  } catch (error) {
+    console.error('Error saving subscription:', error);
+    res.status(500).json({ error: 'Failed to save subscription' });
+  }
 });
 
-app.post('/push/unsubscribe', (req, res) => {
+app.post('/push/unsubscribe', async (req, res) => {
   const subscription = req.body;
 
   if (!subscription || !subscription.endpoint) {
     return res.status(400).json({ error: 'Invalid subscription' });
   }
 
-  // Find and remove subscription
-  for (const sub of pushSubscriptions) {
-    if (sub.endpoint === subscription.endpoint) {
-      pushSubscriptions.delete(sub);
-      console.log(`Push subscription removed: ${subscription.endpoint.substring(0, 50)}...`);
-      break;
-    }
+  try {
+    await removeSubscription(subscription.endpoint);
+    console.log(`Push subscription removed: ${subscription.endpoint.substring(0, 50)}...`);
+    res.json({ success: true, message: 'Subscription removed' });
+  } catch (error) {
+    console.error('Error removing subscription:', error);
+    res.status(500).json({ error: 'Failed to remove subscription' });
   }
-
-  res.json({ success: true, message: 'Subscription removed' });
 });
 
 app.get('/push/vapid-public-key', (req, res) => {
@@ -358,6 +403,15 @@ app.post('/messages', async (req, res) => {
   try {
     const message = await createMessage(messageData);
     io.to('admin').emit('admin-new-message', message);
+
+    // Send push notification to admins
+    sendPushNotification({
+      title: 'Nouveau message',
+      body: `${author}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
+      data: { url: '/admin' },
+      tag: 'new-message'
+    });
+
     res.status(201).json(message);
   } catch (error) {
     console.error('Error creating message:', error);
