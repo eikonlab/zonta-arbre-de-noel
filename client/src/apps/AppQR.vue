@@ -27,9 +27,6 @@
         </div>
       </a>
     </div>
-    /* Instruction message styling */ .qr-instruction { font-size: 2rem;
-    font-weight: 600; color: #5c3317; text-align: center; margin-bottom: 2rem;
-    max-width: 90vw; }
   </div>
 </template>
 
@@ -220,5 +217,14 @@ onUnmounted(() => {
   min-width: 200px;
   text-align: center;
   flex-shrink: 0;
+}
+
+.qr-instruction {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #5c3317;
+  text-align: center;
+  margin-bottom: 2rem;
+  max-width: 90vw;
 }
 </style>
