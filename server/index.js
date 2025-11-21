@@ -21,7 +21,14 @@ const crypto = require('crypto');
 const webpush = require('web-push');
 require('dotenv').config();
 
+
 const app = express();
+
+// Add JSON body parsing middleware (for POST requests)
+app.use(express.json());
+
+// Ensure pushSubscriptions is defined as a Set
+const pushSubscriptions = new Set();
 
 // --- CORS CONFIGURATION ---
 app.use(cors({
