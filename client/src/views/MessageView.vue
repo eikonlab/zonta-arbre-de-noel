@@ -42,6 +42,7 @@ const nextMessage = ref(null);
 const currentMessageColor = ref("#fdbc2e");
 const currentTextColor = ref("#fff");
 const animationSpeed = 90; // px/s constant speed (reduced for Pi)
+const isLoading = ref(true);
 
 // Page title
 document.title = "Zonta - Ecran";
@@ -63,13 +64,21 @@ const visibleMessages = computed(() =>
 // Get priority messages: messages with matching priorityNumber (template ID) within last hour
 const priorityMessages = computed(() => {
   const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
-  return visibleMessages.value.filter((msg) => {
+  const candidates = visibleMessages.value.filter((msg) => {
     if (!msg.priorityNumber || msg.priorityNumber !== templateId.value) {
       return false;
     }
     const msgTime = new Date(msg.createdAt).getTime();
     return msgTime >= oneHourAgo;
   });
+
+  // Sort by date descending to get the most recent one
+  candidates.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  // Return only the most recent one
+  return candidates.length > 0 ? [candidates[0]] : [];
 });
 
 function getRandomMessage() {
@@ -425,7 +434,17 @@ function layoutText(str) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  const content = str && str.length ? str : "Chargement du message...";
+  let content = str;
+  if (!content || content.length === 0) {
+    if (isLoading.value) {
+      content = "Chargement...";
+    } else if (visibleMessages.value.length === 0) {
+      content = "Aucun message pour le moment";
+    } else {
+      content = "Chargement du message...";
+    }
+  }
+
   for (let i = 0; i < content.length; i++) {
     const ch = content[i];
     const w = ctx.measureText(ch).width;
@@ -599,32 +618,39 @@ function prepareScene() {
 
 // Messages lifecycle
 async function loadMessages() {
+  isLoading.value = true;
   try {
     const response = await axios.get(`${API_URL}/messages`);
     messages.value = response.data;
     updateMessage();
   } catch (error) {
     console.error("Error loading messages:", error);
+  } finally {
+    isLoading.value = false;
+    if (!currentMessage.value) prepareScene();
   }
 }
 
 function isPriority(msg) {
   if (!msg) return false;
-  return (
-    msg.priorityNumber &&
-    msg.priorityNumber === templateId.value &&
-    Date.now() - new Date(msg.createdAt).getTime() < 60 * 60 * 1000
-  );
+  // Only consider it priority if it is the CURRENT priority message (the most recent one)
+  return priorityMessages.value.some((p) => p.id === msg.id);
 }
 
 function updateMessage() {
   currentMessage.value = getRandomMessage();
   nextMessage.value = pickNextDifferent();
-  if (isPriority(currentMessage.value)) {
-    currentMessageColor.value = "#fff";
-    currentTextColor.value = getRandomColor();
+  if (currentMessage.value) {
+    if (isPriority(currentMessage.value)) {
+      currentMessageColor.value = "#fff";
+      currentTextColor.value = getRandomColor();
+    } else {
+      currentMessageColor.value = getRandomColor();
+      currentTextColor.value = "#fff";
+    }
   } else {
-    currentMessageColor.value = getRandomColor();
+    // No message available
+    currentMessageColor.value = "#fdbc2e";
     currentTextColor.value = "#fff";
   }
   // prepare canvas for new message and template
@@ -676,7 +702,13 @@ onMounted(async () => {
     setInterval(() => {
       currentMessage.value = nextMessage.value;
       nextMessage.value = pickNextDifferent();
-      currentMessageColor.value = getRandomColor();
+      if (isPriority(currentMessage.value)) {
+        currentMessageColor.value = "#fff";
+        currentTextColor.value = getRandomColor();
+      } else {
+        currentMessageColor.value = getRandomColor();
+        currentTextColor.value = "#fff";
+      }
     }, 5000);
   } else {
     // Normal mode: prepare canvas and start animation
