@@ -11,30 +11,6 @@ function getCurrentToken() {
 }
 
 // ...existing code...
-
-// Place QR token endpoints AFTER app is initialized
-// (after const app = express(); and CORS setup)
-
-// ...existing code...
-
-// At the end of your middleware setup, before your routes:
-app.get('/api/current-token', (req, res) => {
-  const token = getCurrentToken();
-  res.json({ token, expiresIn: TOKEN_EXPIRY_MS });
-});
-
-app.get('/api/validate-token/:token', (req, res) => {
-  const { token } = req.params;
-  const validTokens = [getCurrentToken()];
-  // Optionally allow previous window for clock skew
-  const now = Date.now();
-  const prevWindow = Math.floor((now - TOKEN_EXPIRY_MS) / TOKEN_EXPIRY_MS);
-  const crypto = require('crypto');
-  validTokens.push(
-    crypto.createHmac('sha256', SECRET).update(String(prevWindow)).digest('hex').slice(0, 16)
-  );
-  res.json({ valid: validTokens.includes(token) });
-});
 // Point d'entrée principal du serveur
 const express = require('express');
 const http = require('http');
@@ -472,6 +448,26 @@ io.on('connection', (socket) => {
     socket.join('admin');
     console.log('Socket registered as admin');
   });
+});
+
+
+// --- QR TOKEN ENDPOINTS (must be after app is initialized and middleware is set up) ---
+app.get('/api/current-token', (req, res) => {
+  const token = getCurrentToken();
+  res.json({ token, expiresIn: TOKEN_EXPIRY_MS });
+});
+
+app.get('/api/validate-token/:token', (req, res) => {
+  const { token } = req.params;
+  const validTokens = [getCurrentToken()];
+  // Optionally allow previous window for clock skew
+  const now = Date.now();
+  const prevWindow = Math.floor((now - TOKEN_EXPIRY_MS) / TOKEN_EXPIRY_MS);
+  const crypto = require('crypto');
+  validTokens.push(
+    crypto.createHmac('sha256', SECRET).update(String(prevWindow)).digest('hex').slice(0, 16)
+  );
+  res.json({ valid: validTokens.includes(token) });
 });
 
 const PORT = process.env.PORT || 8102;
