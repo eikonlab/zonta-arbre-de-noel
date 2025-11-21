@@ -52,59 +52,40 @@ const templateId = computed(() => parseInt(route.params.id) || 1);
 const currentTemplate = computed(() => getTemplateById(templateId.value));
 const templates = messageTemplates;
 
-// Message counter for priority system (1 priority message every 3 messages)
-const messageCount = ref(0);
+// Urgent queue for new messages
+const urgentQueue = ref([]);
 
 const visibleMessages = computed(() =>
   messages.value.filter(
-    (msg) => !msg.hidden && msg.content && msg.content.trim().length > 0
+    (msg) =>
+      !msg.hidden &&
+      msg.content &&
+      msg.content.trim().length > 0 &&
+      msg.priorityNumber === templateId.value
   )
 );
 
-// Get priority messages: messages with matching priorityNumber (template ID) within last hour
-const priorityMessages = computed(() => {
+function isRecent(msg) {
+  if (!msg) return false;
   const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
-  const candidates = visibleMessages.value.filter((msg) => {
-    if (!msg.priorityNumber || msg.priorityNumber !== templateId.value) {
-      return false;
-    }
-    const msgTime = new Date(msg.createdAt).getTime();
-    return msgTime >= oneHourAgo;
-  });
-
-  // Sort by date descending to get the most recent one
-  candidates.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-
-  // Return only the most recent one
-  return candidates.length > 0 ? [candidates[0]] : [];
-});
+  const msgTime = new Date(msg.createdAt).getTime();
+  return msgTime >= oneHourAgo;
+}
 
 function getRandomMessage() {
-  messageCount.value++;
-
   const available = visibleMessages.value;
   if (available.length === 0) return null;
 
-  // Only try to show a priority message every 3rd message if there are at least 2 visible messages
-  if (
-    available.length > 1 &&
-    messageCount.value % 3 === 0 &&
-    priorityMessages.value.length > 0
-  ) {
-    const randomIndex = Math.floor(
-      Math.random() * priorityMessages.value.length
-    );
-    return priorityMessages.value[randomIndex];
-  }
-
-  // Otherwise, show a regular message
   const randomIndex = Math.floor(Math.random() * available.length);
   return available[randomIndex];
 }
 
 function pickNextDifferent() {
+  // 1. Check urgent queue first
+  if (urgentQueue.value.length > 0) {
+    return urgentQueue.value.shift();
+  }
+
   let candidate = getRandomMessage();
   let attempts = 0;
   while (
@@ -560,7 +541,7 @@ function renderFrame(dtMs) {
     setTimeout(() => {
       currentMessage.value = nextMessage.value;
       nextMessage.value = pickNextDifferent();
-      if (isPriority(currentMessage.value)) {
+      if (isRecent(currentMessage.value)) {
         currentMessageColor.value = "#fff";
         currentTextColor.value = getRandomColor();
       } else {
@@ -631,17 +612,11 @@ async function loadMessages() {
   }
 }
 
-function isPriority(msg) {
-  if (!msg) return false;
-  // Only consider it priority if it is the CURRENT priority message (the most recent one)
-  return priorityMessages.value.some((p) => p.id === msg.id);
-}
-
 function updateMessage() {
   currentMessage.value = getRandomMessage();
   nextMessage.value = pickNextDifferent();
   if (currentMessage.value) {
-    if (isPriority(currentMessage.value)) {
+    if (isRecent(currentMessage.value)) {
       currentMessageColor.value = "#fff";
       currentTextColor.value = getRandomColor();
     } else {
@@ -678,6 +653,9 @@ onMounted(async () => {
   // Set up socket listeners
   socket.on("new-message", (msg) => {
     messages.value.push(msg);
+    if (msg.priorityNumber === templateId.value) {
+      urgentQueue.value.push(msg);
+    }
   });
 
   socket.on("message-updated", (updatedMsg) => {
@@ -702,7 +680,7 @@ onMounted(async () => {
     setInterval(() => {
       currentMessage.value = nextMessage.value;
       nextMessage.value = pickNextDifferent();
-      if (isPriority(currentMessage.value)) {
+      if (isRecent(currentMessage.value)) {
         currentMessageColor.value = "#fff";
         currentTextColor.value = getRandomColor();
       } else {
