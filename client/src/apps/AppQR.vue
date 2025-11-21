@@ -97,7 +97,8 @@ onUnmounted(() => {
   height: 100vh;
   width: 100vw;
   background-color: #fdbc2e;
-  padding: 0;
+  padding: 4vh 0 4vh 0;
+  box-sizing: border-box;
   overflow: hidden;
   overscroll-behavior: none;
   -webkit-overflow-scrolling: auto;
@@ -160,11 +161,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 2rem;
   width: 100%;
   height: 100%;
-  padding: 1rem;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -185,11 +186,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Make the square as big as possible but always square */
-  width: min(90vw, 90vh);
-  height: min(90vw, 90vh);
+  /* Make the square as big as possible but always square, but leave space for text above */
+  width: min(90vw, 70vh);
+  height: min(90vw, 70vh);
   max-width: 90vw;
-  max-height: 90vh;
+  max-height: 70vh;
   box-sizing: border-box;
   border-radius: 1.5rem;
   padding: 2vw;
@@ -226,5 +227,11 @@ onUnmounted(() => {
   text-align: center;
   margin-bottom: 2rem;
   max-width: 90vw;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  box-sizing: border-box;
+  padding-left: 2vw;
+  padding-right: 2vw;
 }
 </style>
