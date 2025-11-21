@@ -176,19 +176,19 @@ onUnmounted(() => {
 
 .qr-code-container {
   background: white;
-  padding: 0;
-  border-radius: 0;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
   transition: box-shadow 0.2s;
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100vw;
-  height: 100vh;
-  max-width: 100vw;
-  max-height: 100vh;
+  /* Make the square as big as possible but always square */
+  width: min(90vw, 90vh);
+  height: min(90vw, 90vh);
+  max-width: 90vw;
+  max-height: 90vh;
   box-sizing: border-box;
+  border-radius: 1.5rem;
+  padding: 2vw;
 }
 
 .qr-code-link:hover .qr-code-container {
@@ -199,8 +199,8 @@ onUnmounted(() => {
   display: block;
   width: 100%;
   height: 100%;
-  max-width: 100vw;
-  max-height: 100vh;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 
