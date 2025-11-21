@@ -10,6 +10,12 @@
     </div>
 
     <div v-else class="qr-content">
+      <div class="qr-instruction">
+        <span
+          >Scannez ce QR code pour envoyer un message sur le sapin
+          porte-paroles</span
+        >
+      </div>
       <a
         :href="currentUrl"
         target="_blank"
@@ -20,9 +26,10 @@
           <img :src="qrCodeDataUrl" alt="QR Code d'accès" class="qr-code" />
         </div>
       </a>
-
-      <!-- Timer removed: only QR code remains -->
     </div>
+    /* Instruction message styling */ .qr-instruction { font-size: 2rem;
+    font-weight: 600; color: #5c3317; text-align: center; margin-bottom: 2rem;
+    max-width: 90vw; }
   </div>
 </template>
 
