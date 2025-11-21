@@ -1,3 +1,32 @@
+// --- QR TOKEN SYSTEM ---
+const TOKEN_EXPIRY_MS = parseInt(process.env.TOKEN_EXPIRY_MS, 10) || 300000; // default 5 min
+const SECRET = process.env.TOKEN_SECRET || 'zonta-secret';
+
+function getCurrentToken() {
+  // Token changes every TOKEN_EXPIRY_MS, based on current time window
+  const now = Date.now();
+  const window = Math.floor(now / TOKEN_EXPIRY_MS);
+  const crypto = require('crypto');
+  return crypto.createHmac('sha256', SECRET).update(String(window)).digest('hex').slice(0, 16);
+}
+
+app.get('/api/current-token', (req, res) => {
+  const token = getCurrentToken();
+  res.json({ token, expiresIn: TOKEN_EXPIRY_MS });
+});
+
+app.get('/api/validate-token/:token', (req, res) => {
+  const { token } = req.params;
+  const validTokens = [getCurrentToken()];
+  // Optionally allow previous window for clock skew
+  const now = Date.now();
+  const prevWindow = Math.floor((now - TOKEN_EXPIRY_MS) / TOKEN_EXPIRY_MS);
+  const crypto = require('crypto');
+  validTokens.push(
+    crypto.createHmac('sha256', SECRET).update(String(prevWindow)).digest('hex').slice(0, 16)
+  );
+  res.json({ valid: validTokens.includes(token) });
+});
 // Point d'entrée principal du serveur
 const express = require('express');
 const http = require('http');
