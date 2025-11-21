@@ -5,19 +5,10 @@
       <p>Validation du token d'accès...</p>
     </div>
 
-    <div v-else-if="messageSent && !reviewNeeded" class="confirmation">
+    <div v-else-if="messageSent" class="confirmation">
       <h1>✅ Message envoyé !</h1>
       <p>Votre message a été publié avec succès sur le mur de témoignages.</p>
       <p class="thank-you">Merci pour votre contribution.</p>
-    </div>
-
-    <div v-else-if="reviewNeeded" class="confirmation">
-      <h1>🕵️ Message en attente de modération</h1>
-      <p>
-        Merci pour votre message. Il nécessite une relecture par notre équipe de
-        modération avant d'être affiché publiquement.
-      </p>
-      <p class="thank-you">Merci de votre compréhension et de votre soutien.</p>
     </div>
 
     <div v-else class="form-container">
@@ -85,7 +76,6 @@ const content = ref("");
 const hasValidToken = ref(false);
 const tokenChecked = ref(false);
 const messageSent = ref(false);
-const reviewNeeded = ref(false);
 const sending = ref(false);
 
 // Character counter
@@ -152,12 +142,7 @@ async function sendMessage() {
       author: author.value,
       content: content.value,
     });
-    // If server flags the message, inform the user it's in review
-    if (data && data.flagged) {
-      reviewNeeded.value = true;
-    } else {
-      messageSent.value = true;
-    }
+    messageSent.value = true;
   } catch (error) {
     console.error("Error sending message:", error);
     if (error.response?.status === 429) {

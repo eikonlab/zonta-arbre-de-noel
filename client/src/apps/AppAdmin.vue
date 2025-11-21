@@ -54,7 +54,7 @@
             <thead>
               <tr>
                 <th>Nom</th>
-                <th>Status</th>
+
                 <th>Date</th>
                 <th>Texte</th>
                 <th colspan="2">Actions</th>
@@ -75,29 +75,7 @@
                 <td>
                   <span class="author">{{ message.author }}</span>
                 </td>
-                <td>
-                  <div class="status-container">
-                    <div class="status-badges">
-                      <span
-                        v-if="message.toxicity !== null"
-                        class="toxicity-score"
-                        :class="getToxicityClass(message.toxicity)"
-                      >
-                        Toxicité: {{ Math.round(message.toxicity * 100) }}%
-                      </span>
-                      <span
-                        v-if="message.flagged"
-                        class="flag-badge"
-                        :class="getFlagClass(message.flagged)"
-                      >
-                        {{ message.flagged }}
-                      </span>
-                    </div>
-                    <div v-if="message.flagReason" class="status-reason">
-                      {{ message.flagReason }}
-                    </div>
-                  </div>
-                </td>
+
                 <td>
                   <div class="date-container">
                     <span class="date">{{

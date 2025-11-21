@@ -9,156 +9,33 @@ const webpush = require('web-push');
 require('dotenv').config();
 
 const app = express();
-const server = http.createServer(app);
-
-// CORS configuration for production
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'https://client.zonta.eikon.ch',
-  'https://www.client.zonta.eikon.ch',
-];
-
-const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    credentials: true
-  }
-});
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  credentials: true
-}));
-app.use(bodyParser.json());
-
-// Configure web-push with VAPID keys
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:jminguely@gmail.com',
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
-}
-
-// Store push subscriptions in memory (in production, use a database)
-const pushSubscriptions = new Set();
-
-// Helper function to send push notification to all subscribers
-async function sendPushNotification(payload) {
-  const notifications = [];
-
-  for (const subscription of pushSubscriptions) {
-    try {
-      await webpush.sendNotification(subscription, JSON.stringify(payload));
-      notifications.push({ subscription, success: true });
-    } catch (error) {
-      console.error('Error sending push notification:', error);
-      // If subscription is no longer valid, remove it
-      if (error.statusCode === 410) {
-        pushSubscriptions.delete(subscription);
-      }
-      notifications.push({ subscription, success: false, error });
-    }
-  }
-
-  return notifications;
-}
-
-// Token management system
-const TOKEN_EXPIRY_MS = parseInt(process.env.TOKEN_EXPIRY_MS) || 120000;
-let currentToken = '';
-let tokenTimestamp = 0;
-
-function generateToken() {
-  return crypto.randomBytes(16).toString('hex');
-}
-
-function getCurrentToken() {
-  const now = Date.now();
-  if (now - tokenTimestamp > TOKEN_EXPIRY_MS) {
-    currentToken = generateToken();
-    tokenTimestamp = now;
-    console.log(`New token generated: ${currentToken} (expires in ${TOKEN_EXPIRY_MS}ms)`);
-  }
-  return currentToken;
-}
-
-function isValidToken(token) {
-  return token === getCurrentToken();
-}
-
-app.get('/api/current-token', (req, res) => {
-  res.json({
-    token: getCurrentToken(),
-    expiresAt: new Date(tokenTimestamp + TOKEN_EXPIRY_MS).toISOString(),
-    expiryMs: TOKEN_EXPIRY_MS
-  });
-});
-
-app.get('/api/validate-token/:token', (req, res) => {
-  const { token } = req.params;
-  res.json({
-    valid: isValidToken(token),
-    currentToken: getCurrentToken()
-  });
-});
-
-// Mode debug : messages de test (tirés de votre CSV)
 const DEBUG_MESSAGES = [
-  { author: 'A', content: "Allez Fribourg-Gottéron.", toxicity: 0.007 },
-  { author: 'A', content: "J'ai mis des années à comprendre que les remarques constantes sur mon poids...", toxicity: 0.015 },
-  { author: 'A', content: "À toutes les femmes qui se battent en silence, vous n'êtes pas seules.", toxicity: 0.006 },
-  { author: 'A', content: "Les hommes aussi subissent des violences ! Pourquoi on ne parle que des femmes ? C'est de la discrimination.", toxicity: 0.061 },
-  { author: 'A', content: "La plupart du temps, ce sont des problèmes de couple. Si les femmes étaient moins provocantes, ça n'arriverait pas.", toxicity: 0.055 },
-  { author: 'A', content: "Moi, je me suis jamais laissé faire. J'aurais mis mon agresseur au tapis.", toxicity: 0.148 },
-  { author: 'A', content: "Nique la police", toxicity: 0.1 }, // Exemple ajouté
-  { author: 'A', content: "S4l0p3 de féministes", toxicity: 0.2 }, // Exemple ajouté
-  { author: 'A', content: "Nike les arbres", toxicity: 0.15 } // Exemple ajouté
+  { author: 'A', content: "Allez Fribourg-Gottéron." },
+  { author: 'A', content: "J'ai mis des années à comprendre que les remarques constantes sur mon poids..." },
+  { author: 'A', content: "À toutes les femmes qui se battent en silence, vous n'êtes pas seules." },
+  { author: 'A', content: "Les hommes aussi subissent des violences ! Pourquoi on ne parle que des femmes ? C'est de la discrimination." },
+  { author: 'A', content: "La plupart du temps, ce sont des problèmes de couple. Si les femmes étaient moins provocantes, ça n'arriverait pas." },
+  { author: 'A', content: "Moi, je me suis jamais laissé faire. J'aurais mis mon agresseur au tapis." },
+  { author: 'A', content: "Nique la police" }, // Exemple ajouté
+  { author: 'A', content: "S4l0p3 de féministes" }, // Exemple ajouté
+  { author: 'A', content: "Nike les arbres" } // Exemple ajouté
 ];
 
 // ... (Le endpoint /debug/messages reste le même) ...
 app.post('/debug/messages', async (req, res) => {
   try {
     const createdMessages = [];
-    for (const { author, content, toxicity: debugTox } of DEBUG_MESSAGES) {
-      // Simule l'appel API ou utilise la toxicité fournie
-      let toxicity = debugTox;
-
-      // Nouvelle logique unifiée avec LLM
-      const classification = await classifyContent(content);
-      let flagged = classification.flagged;
-      let flagReason = classification.flagReason;
-      if (!flagged && toxicity !== null && toxicity > PERSPECTIVE_THRESHOLD) {
-        flagged = 'toxic';
-        flagReason = `perspective:>${PERSPECTIVE_THRESHOLD}`;
-      }
-      const onTopic = flagged !== 'hors-sujet';
-
+    for (const { author, content } of DEBUG_MESSAGES) {
       const messageData = {
         author,
         content,
-        toxicity,
-        onTopic,
-        flagged,
-        flagReason: flagReason || null,
-        // If flagged, default to hidden so admin sees it as not displayed
-        hidden: Boolean(flagged),
+        hidden: true,
         priorityNumber: Math.floor(Math.random() * 5) + 1,
         createdAt: new Date().toISOString()
       };
       const message = await createMessage(messageData);
       createdMessages.push(message);
-      if (message.flagged) io.to('admin').emit('admin-new-message', message);
-      else io.emit('new-message', message);
+      io.to('admin').emit('admin-new-message', message);
     }
     res.json({ status: 'ok', count: createdMessages.length });
   } catch (error) {
@@ -273,9 +150,7 @@ const EXPLICIT_SPAM_PATTERNS = [
 const PERSPECTIVE_THRESHOLD = 0.4;
 
 // Perspective API (appel réel)
-const { getToxicityScore } = require('./models/perspective');
-// LLM-based moderation for off-topic detection
-const { checkTopicRelevance } = require('./models/llmModeration');
+
 
 // Database
 const { getAllMessages, createMessage, updateMessage, deleteMessage, bulkUpdateMessages, getHiddenMessagesSince, hasPostedToday } = require('./models/database');
@@ -391,27 +266,11 @@ function classifyContentSync(content) {
 }
 
 // Classification de contenu (asynchrone, avec LLM pour off-topic)
-async function classifyContent(content) {
-  // 1) Check synchronous patterns first (toxic + spam)
-  const syncResult = classifyContentSync(content);
-  if (syncResult.flagged) {
-    return syncResult;
-  }
 
-  // 2) Use LLM to check topic relevance
-  const llmResult = await checkTopicRelevance(content);
-  if (!llmResult.isOnTopic) {
-    return {
-      flagged: 'hors-sujet',
-      flagReason: `llm:${llmResult.reason || 'off-topic'}`
-    };
-  }
-
-  // 3) Not flagged
-  return { flagged: null, flagReason: null };
-}
 
 // Poster un message (logique refactorisée avec LLM)
+
+// Poster un message (tous les messages sont masqués par défaut, aucune modération automatique)
 app.post('/messages', async (req, res) => {
   const { author, content } = req.body;
   if (!author || !content) return res.status(400).json({ error: 'Champs manquants' });
@@ -438,41 +297,16 @@ app.post('/messages', async (req, res) => {
     return res.status(500).json({ error: 'Erreur lors de la vérification de la limite de messages.' });
   }
 
-  // Run Perspective API and LLM classification in parallel
-  const [toxicity, classification] = await Promise.all([
-    getToxicityScore(content).catch(e => {
-      console.warn('Échec récupération score toxicité:', e.message);
-      return null;
-    }),
-    classifyContent(content)
-  ]);
-
-  // --- LOGIQUE DE FLAGGING (refacto avec LLM) ---
-  let flagged = classification.flagged;
-  let flagReason = classification.flagReason;
-
-  // Si pas encore flaggé, on regarde Perspective
-  if (!flagged && toxicity !== null && toxicity > PERSPECTIVE_THRESHOLD) {
-    flagged = 'toxic';
-    flagReason = `perspective:>${PERSPECTIVE_THRESHOLD}`;
-  }
-
-  // onTopic is true unless flagged as hors-sujet
-  const onTopic = flagged !== 'hors-sujet';
-  // --- FIN LOGIQUE ---
-
-  // Generate random priority number from 1 to 5
+  // All messages are hidden by default, no flagging, no moderation
   const priorityNumber = Math.floor(Math.random() * 5) + 1;
-
   const messageData = {
     author,
     content,
-    toxicity,
-    onTopic, // onTopic is true unless flagged as hors-sujet (determined by LLM)
-    flagged, // 'toxic', 'hors-sujet', or null
-    flagReason: flagReason || null,
-    // Si flaggé, masquer par défaut côté admin (cohérent avec l'affichage public)
-    hidden: Boolean(flagged),
+    toxicity: null,
+    onTopic: true,
+    flagged: null,
+    flagReason: null,
+    hidden: true, // always hidden by default
     priorityNumber,
     ipAddress,
     createdAt: new Date().toISOString()
@@ -480,26 +314,7 @@ app.post('/messages', async (req, res) => {
 
   try {
     const message = await createMessage(messageData);
-    if (message.flagged) io.to('admin').emit('admin-new-message', message);
-    else io.emit('new-message', message);
-
-    // Send push notification if message is flagged
-    if (message.flagged && pushSubscriptions.size > 0) {
-      const flagType = message.flagged === 'toxic' ? 'toxique' : 'hors-sujet';
-      await sendPushNotification({
-        title: 'Nouveau message signalé',
-        body: `Message ${flagType}: "${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}"`,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        tag: 'message-flagged',
-        data: {
-          messageId: message.id,
-          flagged: message.flagged,
-          url: '/admin'
-        }
-      });
-    }
-
+    io.to('admin').emit('admin-new-message', message);
     res.status(201).json(message);
   } catch (error) {
     console.error('Error creating message:', error);
