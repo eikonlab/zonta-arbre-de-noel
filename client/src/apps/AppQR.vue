@@ -21,41 +21,29 @@
         </div>
       </a>
 
-      <div class="countdown">{{ timeUntilExpiry }}</div>
+      <!-- Timer removed: only QR code remains -->
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import QRCode from "qrcode";
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 const CLIENT_URL = import.meta.env.VITE_CLIENT_URL || window.location.origin;
 
-// Refresh 5 seconds before token expires to avoid edge cases
-const REFRESH_BUFFER_MS = 5000;
-
 const loading = ref(true);
 const error = ref("");
 const currentToken = ref("");
 const qrCodeDataUrl = ref("");
 const currentUrl = ref("");
-const expiresAt = ref(null);
-const timeUntilExpiry = ref("");
-const tokenExpiryMs = ref(120000); // Default, will be updated from server
 
 let intervalId = null;
-let countdownIntervalId = null;
 
 // Set page title
 document.title = "Zonta - QR Code";
-
-// Computed property for display
-const tokenExpiryMinutes = computed(() => {
-  return Math.floor(tokenExpiryMs.value / 60000);
-});
 
 async function fetchToken() {
   try {
@@ -64,24 +52,8 @@ async function fetchToken() {
 
     const response = await axios.get(`${API_URL}/api/current-token`);
     currentToken.value = response.data.token;
-    expiresAt.value = new Date(response.data.expiresAt);
 
-    // Update token expiry duration from server
-    if (response.data.expiryMs) {
-      tokenExpiryMs.value = response.data.expiryMs;
-
-      // Reset interval with new timing (refresh 5s before expiry)
-      if (intervalId) clearInterval(intervalId);
-      const refreshInterval = Math.max(
-        tokenExpiryMs.value - REFRESH_BUFFER_MS,
-        1000
-      );
-      intervalId = setInterval(fetchToken, refreshInterval);
-
-      console.log(
-        `Token expires in ${tokenExpiryMs.value}ms, will refresh in ${refreshInterval}ms`
-      );
-    }
+    // No need to handle expiry or countdown, just generate QR code
 
     // Generate URL with token
     currentUrl.value = `${CLIENT_URL}?token=${currentToken.value}`;
@@ -97,7 +69,6 @@ async function fetchToken() {
     });
 
     loading.value = false;
-    updateCountdown();
   } catch (err) {
     console.error("Error fetching token:", err);
     error.value = err.message || "Erreur de connexion au serveur";
@@ -105,33 +76,12 @@ async function fetchToken() {
   }
 }
 
-function updateCountdown() {
-  if (!expiresAt.value) return;
-
-  const now = new Date();
-  const timeLeft = expiresAt.value.getTime() - now.getTime();
-
-  if (timeLeft <= 0) {
-    timeUntilExpiry.value = "Expiré";
-    fetchToken(); // Refresh token
-    return;
-  }
-
-  const minutes = Math.floor(timeLeft / 60000);
-  const seconds = Math.floor((timeLeft % 60000) / 1000);
-  timeUntilExpiry.value = `${minutes}:${seconds.toString().padStart(2, "0")}`;
-}
-
 onMounted(() => {
   fetchToken();
-
-  // Update countdown every second
-  countdownIntervalId = setInterval(updateCountdown, 1000);
 });
 
 onUnmounted(() => {
   if (intervalId) clearInterval(intervalId);
-  if (countdownIntervalId) clearInterval(countdownIntervalId);
 });
 </script>
 
