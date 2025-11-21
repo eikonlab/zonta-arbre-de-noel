@@ -65,13 +65,6 @@ const visibleMessages = computed(() =>
   )
 );
 
-function isRecent(msg) {
-  if (!msg) return false;
-  const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
-  const msgTime = new Date(msg.createdAt).getTime();
-  return msgTime >= oneHourAgo;
-}
-
 function getRandomMessage() {
   const available = visibleMessages.value;
   if (available.length === 0) return null;
@@ -541,13 +534,8 @@ function renderFrame(dtMs) {
     setTimeout(() => {
       currentMessage.value = nextMessage.value;
       nextMessage.value = pickNextDifferent();
-      if (isRecent(currentMessage.value)) {
-        currentMessageColor.value = "#fff";
-        currentTextColor.value = getRandomColor();
-      } else {
-        currentMessageColor.value = getRandomColor();
-        currentTextColor.value = "#fff";
-      }
+      currentMessageColor.value = getRandomColor();
+      currentTextColor.value = "#fff";
       // relayout for new message
       layoutText(currentMessage.value?.content || "");
       // restart from right outside
@@ -616,13 +604,8 @@ function updateMessage() {
   currentMessage.value = getRandomMessage();
   nextMessage.value = pickNextDifferent();
   if (currentMessage.value) {
-    if (isRecent(currentMessage.value)) {
-      currentMessageColor.value = "#fff";
-      currentTextColor.value = getRandomColor();
-    } else {
-      currentMessageColor.value = getRandomColor();
-      currentTextColor.value = "#fff";
-    }
+    currentMessageColor.value = getRandomColor();
+    currentTextColor.value = "#fff";
   } else {
     // No message available
     currentMessageColor.value = "#fdbc2e";
@@ -680,13 +663,8 @@ onMounted(async () => {
     setInterval(() => {
       currentMessage.value = nextMessage.value;
       nextMessage.value = pickNextDifferent();
-      if (isRecent(currentMessage.value)) {
-        currentMessageColor.value = "#fff";
-        currentTextColor.value = getRandomColor();
-      } else {
-        currentMessageColor.value = getRandomColor();
-        currentTextColor.value = "#fff";
-      }
+      currentMessageColor.value = getRandomColor();
+      currentTextColor.value = "#fff";
     }, 5000);
   } else {
     // Normal mode: prepare canvas and start animation
