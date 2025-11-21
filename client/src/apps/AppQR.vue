@@ -184,8 +184,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  max-height: calc(100vh - 12rem);
-  max-width: 100%;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  box-sizing: border-box;
 }
 
 .qr-code-link:hover .qr-code-container {
@@ -196,8 +199,8 @@ onUnmounted(() => {
   display: block;
   width: 100%;
   height: 100%;
-  max-width: calc(100vh - 16rem);
-  max-height: calc(100vh - 16rem);
+  max-width: 100vw;
+  max-height: 100vh;
   object-fit: contain;
 }
 
