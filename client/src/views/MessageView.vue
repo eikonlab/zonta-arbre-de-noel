@@ -41,7 +41,7 @@ const currentMessage = ref(null);
 const nextMessage = ref(null);
 const currentMessageColor = ref("#fdbc2e");
 const currentTextColor = ref("#fff");
-const animationSpeed = 70; // px/s constant speed (reduced for Pi)
+const animationSpeed = 90; // px/s constant speed (reduced for Pi)
 
 // Page title
 document.title = "Zonta - Ecran";
@@ -151,7 +151,7 @@ let lastTs = 0;
 let accumulator = 0;
 
 // Font settings
-const FONT_SIZE = 90; // px (reduced for Pi performance)
+const FONT_SIZE = 110; // px (reduced for Pi performance)
 const FONT_FAMILY = "Arial, sans-serif";
 const FONT_WEIGHT = 600;
 const LETTER_SPACING = 2; // px additional spacing per glyph
