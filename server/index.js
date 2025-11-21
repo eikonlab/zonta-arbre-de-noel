@@ -9,6 +9,21 @@ const webpush = require('web-push');
 require('dotenv').config();
 
 const app = express();
+
+// --- CORS CONFIGURATION ---
+app.use(cors({
+  origin: [
+    'https://client.zonta.eikon.ch',
+    'https://admin.zonta.eikon.ch',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 // Create HTTP server and Socket.IO instance
 const server = http.createServer(app);
 const io = new Server(server, {
