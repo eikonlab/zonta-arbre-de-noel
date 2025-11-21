@@ -9,6 +9,14 @@ const webpush = require('web-push');
 require('dotenv').config();
 
 const app = express();
+// Create HTTP server and Socket.IO instance
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Adjust as needed
+    methods: ["GET", "POST", "PATCH", "DELETE"]
+  }
+});
 const DEBUG_MESSAGES = [
   { author: 'A', content: "Allez Fribourg-Gottéron." },
   { author: 'A', content: "J'ai mis des années à comprendre que les remarques constantes sur mon poids..." },
