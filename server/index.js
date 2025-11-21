@@ -10,6 +10,14 @@ function getCurrentToken() {
   return crypto.createHmac('sha256', SECRET).update(String(window)).digest('hex').slice(0, 16);
 }
 
+// ...existing code...
+
+// Place QR token endpoints AFTER app is initialized
+// (after const app = express(); and CORS setup)
+
+// ...existing code...
+
+// At the end of your middleware setup, before your routes:
 app.get('/api/current-token', (req, res) => {
   const token = getCurrentToken();
   res.json({ token, expiresIn: TOKEN_EXPIRY_MS });
