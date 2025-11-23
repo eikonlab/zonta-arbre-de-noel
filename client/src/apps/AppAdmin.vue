@@ -459,7 +459,9 @@ export default {
 .admin-container {
   min-height: 100vh;
   padding: 20px;
-  background: #fdbc2e;
+  background: url("/bg.jpg") #fdbc2e;
+  background-size: cover;
+  background-position: center;
 }
 
 .admin-header {

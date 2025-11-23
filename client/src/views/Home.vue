@@ -192,7 +192,9 @@ async function sendMessage() {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: #fdbc2e;
+  background: url("/bg.jpg") #fdbc2e;
+  background-size: cover;
+  background-position: center;
   padding: 2rem;
   overscroll-behavior: none;
   touch-action: pan-y;

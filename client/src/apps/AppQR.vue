@@ -144,7 +144,9 @@ onUnmounted(() => {
   justify-content: center;
   height: 100vh;
   width: 100vw;
-  background-color: #fdbc2e;
+  background: url("/bg.jpg") #fdbc2e;
+  background-size: cover;
+  background-position: center;
   padding: 4vh 0 4vh 0;
   box-sizing: border-box;
   overflow: hidden;
