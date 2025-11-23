@@ -11,10 +11,7 @@
 
     <div v-else class="qr-content">
       <div class="qr-instruction">
-        <span
-          >Scannez ce code pour envoyer un message sur le sapin
-          porte-paroles</span
-        >
+        <span>{{ t.qrInstruction }}</span>
       </div>
       <a
         :href="currentUrl"
@@ -27,17 +24,20 @@
         </div>
       </a>
       <div class="message-count" v-if="messageCount !== null">
-        <span>{{ messageCount }} messages envoyés</span>
+        <span>{{ messageCount }} {{ t.messagesSent }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import QRCode from "qrcode";
 import axios from "axios";
 import { io } from "socket.io-client";
+import { useLanguage } from "../composables/useLanguage";
+
+const { t, currentLanguage, setLanguage } = useLanguage();
 
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 const CLIENT_URL = import.meta.env.VITE_CLIENT_URL || window.location.origin;
@@ -50,10 +50,17 @@ const currentUrl = ref("");
 const messageCount = ref(null);
 
 let intervalId = null;
+let langIntervalId = null;
 let socket = null;
 
 // Set page title
-document.title = "Zonta - QR Code";
+watch(
+  t,
+  () => {
+    document.title = "Zonta - QR Code";
+  },
+  { immediate: true }
+);
 
 async function fetchMessageCount() {
   try {
@@ -111,10 +118,21 @@ onMounted(() => {
 
   // Refresh count every 30 seconds (fallback)
   intervalId = setInterval(fetchMessageCount, 30000);
+
+  // Switch language every 10 seconds
+  setLanguage("fr"); // Start with French
+  langIntervalId = setInterval(() => {
+    if (currentLanguage.value === "fr") {
+      setLanguage("de");
+    } else {
+      setLanguage("fr");
+    }
+  }, 10000);
 });
 
 onUnmounted(() => {
   if (intervalId) clearInterval(intervalId);
+  if (langIntervalId) clearInterval(langIntervalId);
   if (socket) socket.disconnect();
 });
 </script>

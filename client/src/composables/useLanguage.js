@@ -21,7 +21,9 @@ const translations = {
     alertLengthExceeded: "Le message ne peut pas dépasser {maxLength} caractères.",
     alertAlreadyPosted: "Vous avez déjà posté un message aujourd'hui. Veuillez réessayer demain.",
     alertError: "Erreur lors de l'envoi du message. Veuillez réessayer.",
-    pageTitle: "Zonta - Ajouter un message"
+    pageTitle: "Zonta - Ajouter un message",
+    qrInstruction: "Scannez ce code pour envoyer un message sur le sapin porte-paroles",
+    messagesSent: "messages envoyés"
   },
   de: {
     verifying: "🔍 Überprüfung läuft...",
@@ -30,7 +32,7 @@ const translations = {
     messagePublished: "Ihre Nachricht wurde erfolgreich auf der Pinnwand veröffentlicht.",
     thankYou: "Danke für Ihren Beitrag.",
     tokenExpired: "⚠️ Formularzugriff abgelaufen - Bitte QR-Code erneut scannen",
-    context: "Diese digitale Pinnwand sammelt Ihre Unterstützungsbotschaften, um Gewalt gegen Frauen zu bekämpfen. Bitte teilen Sie ein Wort, einen Gedanken oder eine Inspiration für die von diesen Taten betroffenen Menschen. Alle Inhalte, die als themenfremd eingestuft werden, werden automatisch gemeldet und entfernt. Weitere Informationen bei",
+    context: "Dieser Bereich sammelt Ihre Unterstützungsbotschaften im Kampf gegen Gewalt an Frauen. Danke, dass Sie ein Wort, einen Gedanken oder eine Inspiration für die Opfer dieser Taten teilen. Inhalte, die als unpassend erachtet werden, werden automatisch gemeldet und entfernt. Weitere Informationen beim Verein",
     associationName: "«Victime, pas seule !»",
     yourName: "Ihr Name",
     yourMessage: "Ihre Nachricht",
@@ -41,7 +43,9 @@ const translations = {
     alertLengthExceeded: "Die Nachricht darf {maxLength} Zeichen nicht überschreiten.",
     alertAlreadyPosted: "Sie haben heute bereits eine Nachricht gepostet. Bitte versuchen Sie es morgen erneut.",
     alertError: "Fehler beim Senden der Nachricht. Bitte versuchen Sie es erneut.",
-    pageTitle: "Zonta - Nachricht hinzufügen"
+    pageTitle: "Zonta - Nachricht hinzufügen",
+    qrInstruction: "Scannen Sie diesen Code, um eine Nachricht an den Sprecherbaum zu senden",
+    messagesSent: "Nachrichten gesendet"
   }
 };
 
