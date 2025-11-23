@@ -1,41 +1,55 @@
 <template>
   <div class="container">
+    <div class="lang-switcher">
+      <button
+        @click="setLanguage('fr')"
+        :class="{ active: currentLanguage === 'fr' }"
+        class="lang-btn"
+      >
+        FR
+      </button>
+      <span class="separator">|</span>
+      <button
+        @click="setLanguage('de')"
+        :class="{ active: currentLanguage === 'de' }"
+        class="lang-btn"
+      >
+        DE
+      </button>
+    </div>
+
     <div v-if="!hasValidToken && !tokenChecked" class="loading">
-      <h1>🔍 Vérification en cours...</h1>
-      <p>Validation du token d'accès...</p>
+      <h1>{{ t.verifying }}</h1>
+      <p>{{ t.validatingToken }}</p>
     </div>
 
     <div v-else-if="messageSent" class="confirmation">
-      <h1>✅ Message envoyé !</h1>
-      <p>Votre message a été publié avec succès sur le mur de témoignages.</p>
-      <p class="thank-you">Merci pour votre contribution.</p>
+      <h1>{{ t.messageSent }}</h1>
+      <p>{{ t.messagePublished }}</p>
+      <p class="thank-you">{{ t.thankYou }}</p>
     </div>
 
     <div v-else class="form-container">
-      <div class="page-title">Formulaire</div>
       <div v-if="!hasValidToken && tokenChecked" class="token-warning">
-        <p>⚠️ Accès au formulaire expiré - Veuillez rescanner le QR Code</p>
+        <p>{{ t.tokenExpired }}</p>
       </div>
 
       <p class="context-box">
-        Cet espace est un mur public de témoignages concernant les violences
-        faites aux femmes. Merci de partager uniquement des récits, ressentis,
-        faits ou messages de soutien liés à ces violences (physiques,
-        psychologiques, sexuelles, économiques, etc.). Tout message jugé
-        hors-sujet est automatiquement signalé et peut être retiré.
+        {{ t.context }}
+        <a href="https://www.victimepasseule.ch/">{{ t.associationName }}</a>
       </p>
       <form class="modern-form" @submit.prevent="sendMessage">
         <input
           v-model="author"
           class="modern-input"
-          placeholder="Votre nom"
+          :placeholder="t.yourName"
           required
         />
         <div class="textarea-wrapper">
           <textarea
             v-model.trim="content"
             class="modern-input modern-textarea"
-            placeholder="Votre message"
+            :placeholder="t.yourMessage"
             rows="4"
             maxlength="140"
             required
@@ -55,10 +69,8 @@
           class="modern-btn"
           :disabled="!hasValidToken || sending"
         >
-          <span v-if="sending">Envoi…</span>
-          <span v-else>{{
-            hasValidToken ? "Envoyer" : "Rescannez le code QR"
-          }}</span>
+          <span v-if="sending">{{ t.sending }}</span>
+          <span v-else>{{ hasValidToken ? t.send : t.rescanQR }}</span>
         </button>
       </form>
     </div>
@@ -66,8 +78,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import axios from "axios";
+import { useLanguage } from "../composables/useLanguage";
+
+const { t, currentLanguage, setLanguage, initLanguage } = useLanguage();
 
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 
@@ -82,8 +97,17 @@ const sending = ref(false);
 const maxLength = 140;
 const remainingChars = computed(() => maxLength - content.value.length);
 
+// Initialize language
+initLanguage();
+
 // Set page title
-document.title = "Zonta - Ajouter un message";
+watch(
+  t,
+  () => {
+    document.title = t.value.pageTitle;
+  },
+  { immediate: true }
+);
 
 // Get token from URL parameters
 function getTokenFromUrl() {
@@ -125,12 +149,12 @@ async function sendMessage() {
   if (!author.value || !content.value) return;
 
   if (!hasValidToken.value) {
-    alert("Token invalide ou expiré. Impossible d'envoyer le message.");
+    alert(t.value.alertTokenInvalid);
     return;
   }
 
   if (content.value.length > maxLength) {
-    alert(`Le message ne peut pas dépasser ${maxLength} caractères.`);
+    alert(t.value.alertLengthExceeded.replace("{maxLength}", maxLength));
     return;
   }
 
@@ -146,17 +170,14 @@ async function sendMessage() {
   } catch (error) {
     console.error("Error sending message:", error);
     if (error.response?.status === 429) {
-      alert(
-        error.response.data.error ||
-          "Vous avez déjà posté un message aujourd'hui. Veuillez réessayer demain."
-      );
+      alert(error.response.data.error || t.value.alertAlreadyPosted);
     } else if (
       error.response?.status === 400 &&
       error.response.data.error?.includes("140")
     ) {
       alert(error.response.data.error);
     } else {
-      alert("Erreur lors de l'envoi du message. Veuillez réessayer.");
+      alert(t.value.alertError);
     }
   } finally {
     sending.value = false;
@@ -167,6 +188,7 @@ async function sendMessage() {
 <style scoped>
 .container {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
@@ -174,6 +196,53 @@ async function sendMessage() {
   padding: 2rem;
   overscroll-behavior: none;
   touch-action: pan-y;
+  position: relative;
+}
+
+.lang-switcher {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(92, 51, 23, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.lang-btn {
+  background: none;
+  border: none;
+  font-weight: 600;
+  color: #5c3317;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+
+.lang-btn:hover {
+  opacity: 1;
+  background: rgba(92, 51, 23, 0.1);
+}
+
+.lang-btn.active {
+  opacity: 1;
+  background: #5c3317;
+  color: #fdbc2e;
+}
+
+.separator {
+  color: #5c3317;
+  opacity: 0.3;
+}
+
+a {
+  color: inherit;
 }
 
 .form-container {
@@ -386,11 +455,30 @@ async function sendMessage() {
 
 @media (max-width: 640px) {
   .container {
-    padding: 1rem;
+    padding: 0;
+    background-color: transparente;
+  }
+
+  .context-box {
+    background: white;
   }
 
   .form-container {
-    padding: 2rem 1.5rem;
+    background: none;
+  }
+
+  .form-container,
+  .loading,
+  .confirmation,
+  .access-denied {
+    padding: 5rem 1.5rem 2rem;
+    box-shadow: none;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    border-radius: 0;
   }
 
   .context-box {
@@ -405,6 +493,17 @@ async function sendMessage() {
   .modern-btn {
     padding: 0.875rem 1.5rem;
     font-size: 1rem;
+  }
+
+  .lang-switcher {
+    top: 1.5rem;
+    right: 1.5rem;
+    background: white; /* Use brand color for visibility on white */
+  }
+
+  .lang-btn.active {
+    background: #5c3317;
+    color: #fdbc2e;
   }
 }
 </style>
