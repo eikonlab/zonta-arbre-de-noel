@@ -477,6 +477,7 @@ a {
     box-shadow: none;
     min-height: 100vh;
     display: flex;
+    justify-content: center;
     flex-direction: column;
     width: 100%;
     max-width: none;

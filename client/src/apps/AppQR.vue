@@ -32,12 +32,14 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import QRCode from "qrcode";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { useLanguage } from "../composables/useLanguage";
 
 const { t, currentLanguage, setLanguage } = useLanguage();
+const route = useRoute();
 
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 const CLIENT_URL = import.meta.env.VITE_CLIENT_URL || window.location.origin;
@@ -76,7 +78,12 @@ async function fetchToken() {
     loading.value = true;
     error.value = "";
 
-    const response = await axios.get(`${API_URL}/api/current-token`);
+    // Get secret from URL query params if present
+    const secret = route.query.secret;
+
+    const response = await axios.get(`${API_URL}/api/current-token`, {
+      params: { secret },
+    });
     currentToken.value = response.data.token;
 
     // No need to handle expiry or countdown, just generate QR code
@@ -98,7 +105,7 @@ async function fetchToken() {
   } catch (err) {
     console.error("Error fetching token:", err);
     if (err.response && err.response.status === 403) {
-      error.value = "Accès refusé : Votre adresse IP n'est pas autorisée.";
+      error.value = "Accès refusé : IP non autorisée ou secret invalide.";
     } else {
       error.value = err.message || "Erreur de connexion au serveur";
     }

@@ -1,7 +1,7 @@
 // --- QR TOKEN SYSTEM ---
 const TOKEN_EXPIRY_MS = parseInt(process.env.TOKEN_EXPIRY_MS, 10) || 300000; // default 5 min
 const SECRET = process.env.TOKEN_SECRET || 'zonta-secret';
-const ALLOWED_IPS = (process.env.ALLOWED_IPS || '127.0.0.1,::1').split(',').map(ip => ip.trim());
+const RASPBERRY_SECRET = process.env.RASPBERRY_SECRET || 'raspberry-secret';
 
 function getCurrentToken() {
   // Token changes every TOKEN_EXPIRY_MS, based on current time window
@@ -9,23 +9,6 @@ function getCurrentToken() {
   const window = Math.floor(now / TOKEN_EXPIRY_MS);
   const crypto = require('crypto');
   return crypto.createHmac('sha256', SECRET).update(String(window)).digest('hex').slice(0, 16);
-}
-
-function isIpAllowed(req) {
-  const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() ||
-    req.headers['x-real-ip'] ||
-    req.connection.remoteAddress ||
-    req.socket.remoteAddress;
-
-  // Normalize IPv6 mapped IPv4
-  const normalizedIp = clientIp ? clientIp.replace(/^::ffff:/, '') : '';
-
-  console.log(`Checking IP access: ${clientIp} (normalized: ${normalizedIp})`);
-
-  return ALLOWED_IPS.some(allowed => {
-    const normalizedAllowed = allowed.replace(/^::ffff:/, '');
-    return normalizedAllowed === normalizedIp || allowed === clientIp;
-  });
 }
 
 // Point d'entrée principal du serveur
@@ -566,14 +549,15 @@ io.on('connection', (socket) => {
 
 // --- QR TOKEN ENDPOINTS (must be after app is initialized and middleware is set up) ---
 app.get('/api/current-token', (req, res) => {
-  if (!isIpAllowed(req)) {
-    return res.status(403).json({ error: 'Access denied: IP not whitelisted' });
+  const providedSecret = req.query.secret;
+
+  // Allow only if the correct secret is provided
+  if (providedSecret !== RASPBERRY_SECRET) {
+    return res.status(403).json({ error: 'Access denied: Invalid secret' });
   }
   const token = getCurrentToken();
   res.json({ token, expiresIn: TOKEN_EXPIRY_MS });
-});
-
-app.get('/api/validate-token/:token', (req, res) => {
+}); app.get('/api/validate-token/:token', (req, res) => {
   const { token } = req.params;
   const validTokens = [getCurrentToken()];
   // Optionally allow previous window for clock skew
