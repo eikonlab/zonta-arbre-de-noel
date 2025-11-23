@@ -90,7 +90,11 @@ async function fetchToken() {
     loading.value = false;
   } catch (err) {
     console.error("Error fetching token:", err);
-    error.value = err.message || "Erreur de connexion au serveur";
+    if (err.response && err.response.status === 403) {
+      error.value = "Accès refusé : Votre adresse IP n'est pas autorisée.";
+    } else {
+      error.value = err.message || "Erreur de connexion au serveur";
+    }
     loading.value = false;
   }
 }
