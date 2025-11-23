@@ -441,7 +441,7 @@ app.post('/messages', async (req, res) => {
       title: 'Nouveau message',
       body: `${author}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
       data: { url: '/admin' },
-      tag: 'new-message'
+      tag: `message-${message.id}`
     });
 
     res.status(201).json(message);
@@ -478,6 +478,15 @@ app.patch('/messages/:id', async (req, res) => {
   try {
     const updatedMessage = await updateMessage(messageId, { hidden, flagged, flagReason });
     io.emit('message-updated', updatedMessage);
+
+    // If message is displayed (hidden: false), remove notification
+    if (hidden === false) {
+      sendPushNotification({
+        action: 'close',
+        tag: `message-${messageId}`
+      });
+    }
+
     res.json(updatedMessage);
   } catch (error) {
     console.error('Error updating message:', error);
@@ -500,6 +509,12 @@ app.delete('/messages/:id', async (req, res) => {
     // Emit count update
     const count = await countAllMessages();
     io.emit('message-count-update', count);
+
+    // Remove notification
+    sendPushNotification({
+      action: 'close',
+      tag: `message-${messageId}`
+    });
 
     res.json({ success: true });
   } catch (error) {

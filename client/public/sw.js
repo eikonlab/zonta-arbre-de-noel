@@ -53,30 +53,45 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   console.log('Service Worker: Push received', event);
 
+  let payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (e) {
+      console.error('Service Worker: Error parsing push data', e);
+    }
+  }
+
+  // Handle close action
+  if (payload.action === 'close' && payload.tag) {
+    event.waitUntil(
+      self.registration.getNotifications({ tag: payload.tag })
+        .then(notifications => {
+          notifications.forEach(notification => notification.close());
+        })
+    );
+    return;
+  }
+
   let data = {
     title: 'Zonta Admin',
     body: 'Nouveau message signalé',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    data: {}
+    data: {},
+    tag: 'message-flagged'
   };
 
-  if (event.data) {
-    try {
-      const payload = event.data.json();
-      data = {
-        title: payload.title || data.title,
-        body: payload.body || data.body,
-        icon: payload.icon || data.icon,
-        badge: payload.badge || data.badge,
-        data: payload.data || {},
-        requireInteraction: true,
-        tag: payload.tag || 'message-flagged'
-      };
-    } catch (e) {
-      console.error('Service Worker: Error parsing push data', e);
-    }
-  }
+  // Merge payload into data
+  data = {
+    title: payload.title || data.title,
+    body: payload.body || data.body,
+    icon: payload.icon || data.icon,
+    badge: payload.badge || data.badge,
+    data: payload.data || {},
+    requireInteraction: true,
+    tag: payload.tag || data.tag
+  };
 
   event.waitUntil(
     self.registration.showNotification(data.title, {
