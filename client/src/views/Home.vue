@@ -300,7 +300,7 @@ a {
 .confirmation {
   text-align: center;
   padding: 4rem 3rem;
-  background: white;
+  background: #ffffff55;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
   max-width: 600px;
 }

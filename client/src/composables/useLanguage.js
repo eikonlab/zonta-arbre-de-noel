@@ -4,12 +4,12 @@ const currentLanguage = ref('fr');
 
 const translations = {
   fr: {
-    verifying: "🔍 Vérification en cours...",
+    verifying: "Vérification en cours...",
     validatingToken: "Validation du token d'accès...",
-    messageSent: "✅ Message envoyé !",
+    messageSent: "Message envoyé !",
     messagePublished: "Votre message a été publié avec succès sur le mur de témoignages.",
     thankYou: "Merci pour votre contribution.",
-    tokenExpired: "⚠️ Accès au formulaire expiré - Veuillez rescanner le QR Code",
+    tokenExpired: "Accès au formulaire expiré - Veuillez rescanner le QR Code",
     context: "Cet espace recueille vos messages de soutien, pour lutter contre les violences faites aux femmes. Merci de partager un mot, une pensée, une inspiration pour les personnes victimes de ces actes. Tout contenu jugé hors-sujet est automatiquement signalé et retiré. Informations complémentaires auprès de l’Association",
     associationName: "«Victime, pas seule !»",
     yourName: "Votre nom",
@@ -28,10 +28,10 @@ const translations = {
   de: {
     verifying: "🔍 Überprüfung läuft...",
     validatingToken: "Zugriffstoken wird validiert...",
-    messageSent: "✅ Nachricht gesendet!",
+    messageSent: "Nachricht gesendet!",
     messagePublished: "Ihre Nachricht wurde erfolgreich auf der Pinnwand veröffentlicht.",
     thankYou: "Danke für Ihren Beitrag.",
-    tokenExpired: "⚠️ Formularzugriff abgelaufen - Bitte QR-Code erneut scannen",
+    tokenExpired: "Formularzugriff abgelaufen - Bitte QR-Code erneut scannen",
     context: "Dieser Bereich sammelt Ihre Unterstützungsbotschaften im Kampf gegen Gewalt an Frauen. Danke, dass Sie ein Wort, einen Gedanken oder eine Inspiration für die Opfer dieser Taten teilen. Inhalte, die als unpassend erachtet werden, werden automatisch gemeldet und entfernt. Weitere Informationen beim Verein",
     associationName: "«Victime, pas seule !»",
     yourName: "Ihr Name",
