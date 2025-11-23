@@ -12,7 +12,7 @@
     <div v-else class="qr-content">
       <div class="qr-instruction">
         <span
-          >Scannez ce QR code pour envoyer un message sur le sapin
+          >Scannez ce code pour envoyer un message sur le sapin
           porte-paroles</span
         >
       </div>
@@ -26,6 +26,9 @@
           <img :src="qrCodeDataUrl" alt="QR Code d'accès" class="qr-code" />
         </div>
       </a>
+      <div class="message-count" v-if="messageCount !== null">
+        <span>{{ messageCount }} messages envoyés</span>
+      </div>
     </div>
   </div>
 </template>
@@ -34,6 +37,7 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import QRCode from "qrcode";
 import axios from "axios";
+import { io } from "socket.io-client";
 
 const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 const CLIENT_URL = import.meta.env.VITE_CLIENT_URL || window.location.origin;
@@ -43,11 +47,22 @@ const error = ref("");
 const currentToken = ref("");
 const qrCodeDataUrl = ref("");
 const currentUrl = ref("");
+const messageCount = ref(null);
 
 let intervalId = null;
+let socket = null;
 
 // Set page title
 document.title = "Zonta - QR Code";
+
+async function fetchMessageCount() {
+  try {
+    const response = await axios.get(`${API_URL}/messages/count`);
+    messageCount.value = response.data.count;
+  } catch (err) {
+    console.error("Error fetching message count:", err);
+  }
+}
 
 async function fetchToken() {
   try {
@@ -82,10 +97,21 @@ async function fetchToken() {
 
 onMounted(() => {
   fetchToken();
+  fetchMessageCount();
+
+  // Initialize socket
+  socket = io(API_URL);
+  socket.on("message-count-update", (count) => {
+    messageCount.value = count;
+  });
+
+  // Refresh count every 30 seconds (fallback)
+  intervalId = setInterval(fetchMessageCount, 30000);
 });
 
 onUnmounted(() => {
   if (intervalId) clearInterval(intervalId);
+  if (socket) socket.disconnect();
 });
 </script>
 
@@ -161,7 +187,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-around;
   gap: 2rem;
   width: 100%;
   height: 100%;
@@ -221,7 +247,7 @@ onUnmounted(() => {
 }
 
 .qr-instruction {
-  font-size: 2rem;
+  font-size: 4rem;
   font-weight: 600;
   color: #5c3317;
   text-align: center;
@@ -233,5 +259,17 @@ onUnmounted(() => {
   box-sizing: border-box;
   padding-left: 2vw;
   padding-right: 2vw;
+}
+
+.message-count {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #5c3317;
+  text-align: center;
+  margin-top: 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 1rem 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(92, 51, 23, 0.1);
 }
 </style>

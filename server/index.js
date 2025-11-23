@@ -10,7 +10,6 @@ function getCurrentToken() {
   return crypto.createHmac('sha256', SECRET).update(String(window)).digest('hex').slice(0, 16);
 }
 
-// ...existing code...
 // Point d'entrée principal du serveur
 const express = require('express');
 const http = require('http');
@@ -203,7 +202,7 @@ const PERSPECTIVE_THRESHOLD = 0.4;
 
 
 // Database
-const { getAllMessages, createMessage, updateMessage, deleteMessage, bulkUpdateMessages, getHiddenMessagesSince, hasPostedToday, addSubscription, removeSubscription, getAllSubscriptions } = require('./models/database');
+const { getAllMessages, createMessage, updateMessage, deleteMessage, bulkUpdateMessages, getHiddenMessagesSince, hasPostedToday, addSubscription, removeSubscription, getAllSubscriptions, countAllMessages } = require('./models/database');
 const { countHiddenMessagesSince } = require('./models/database');
 
 // Configure web-push
@@ -279,6 +278,17 @@ app.post('/push/unsubscribe', async (req, res) => {
 
 app.get('/push/vapid-public-key', (req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
+// Récupérer le nombre total de messages
+app.get('/messages/count', async (req, res) => {
+  try {
+    const count = await countAllMessages();
+    res.json({ count });
+  } catch (error) {
+    console.error('Error counting messages:', error);
+    res.status(500).json({ error: 'Failed to count messages' });
+  }
 });
 
 // Récupérer tous les messages
@@ -403,6 +413,10 @@ app.post('/messages', async (req, res) => {
   try {
     const message = await createMessage(messageData);
     io.to('admin').emit('admin-new-message', message);
+    
+    // Emit count update
+    const count = await countAllMessages();
+    io.emit('message-count-update', count);
 
     // Send push notification to admins
     sendPushNotification({
@@ -464,6 +478,11 @@ app.delete('/messages/:id', async (req, res) => {
   try {
     await deleteMessage(messageId);
     io.emit('message-deleted', messageId);
+
+    // Emit count update
+    const count = await countAllMessages();
+    io.emit('message-count-update', count);
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting message:', error);

@@ -279,6 +279,19 @@ function countHiddenMessagesSince(sinceISO) {
   });
 }
 
+// Count all messages
+function countAllMessages() {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT COUNT(*) as count FROM messages', [], (err, row) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(row.count);
+      }
+    });
+  });
+}
+
 // Check if IP has posted in the last 24 hours
 function hasPostedToday(ipAddress) {
   return new Promise((resolve, reject) => {
@@ -363,6 +376,7 @@ module.exports = {
   bulkUpdateMessages,
   getHiddenMessagesSince,
   countHiddenMessagesSince,
+  countAllMessages,
   hasPostedToday,
   canPost,
   addSubscription,
