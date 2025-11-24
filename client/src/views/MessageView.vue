@@ -140,7 +140,7 @@ let textTotalWidth = 0;
 
 // Animation
 let offsetS = 0; // first glyph offset along path (CSS px)
-const TARGET_FPS = 30;
+const TARGET_FPS = 60;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let rafId = null;
 let lastTs = 0;
