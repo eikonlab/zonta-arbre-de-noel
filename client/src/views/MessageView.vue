@@ -448,7 +448,11 @@ function layoutText(str) {
 
   for (let i = 0; i < content.length; i++) {
     const ch = content[i];
-    const w = ctx.measureText(ch).width;
+    let w = ctx.measureText(ch).width;
+    // Reduce space width to make words closer
+    if (ch === " ") {
+      w *= 0.4;
+    }
     glyphs.push({ ch, w });
   }
 
