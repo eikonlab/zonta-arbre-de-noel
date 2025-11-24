@@ -6,9 +6,7 @@
     <!-- Simple mode: just centered text -->
     <div v-if="SIMPLE_MODE" class="simple-container">
       <div class="simple-text">
-        {{
-          removeEmojis(currentMessage?.content) || "Chargement du message..."
-        }}
+        {{ currentMessage?.content || "Chargement du message..." }}
       </div>
     </div>
 
@@ -20,8 +18,8 @@
     <!-- Hidden element to force font loading -->
     <div
       style="
-        font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
-          'Noto Emoji', 'Noto Sans';
+        font-family: 'Noto Emoji', 'Apple Color Emoji', 'Segoe UI Emoji',
+          'Noto Color Emoji', 'Noto Sans';
         position: absolute;
         top: -9999px;
         left: -9999px;
@@ -140,7 +138,7 @@ let textTotalWidth = 0;
 
 // Animation
 let offsetS = 0; // first glyph offset along path (CSS px)
-const TARGET_FPS = 60;
+const TARGET_FPS = 30;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let rafId = null;
 let lastTs = 0;
@@ -149,7 +147,7 @@ let accumulator = 0;
 // Font settings
 const FONT_SIZE = 110; // px (reduced for Pi performance)
 const FONT_FAMILY =
-  "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Noto Emoji', 'Noto Sans', sans-serif";
+  "'Noto Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Noto Sans', sans-serif";
 const FONT_WEIGHT = 400;
 const LETTER_SPACING = 2; // px additional spacing per glyph
 const ROTATE_GLYPHS = true; // set false to not rotate characters (faster)
@@ -417,15 +415,6 @@ function buildSamples() {
   }
 }
 
-// Utils: Emoji removal
-function removeEmojis(str) {
-  if (!str) return "";
-  return str.replace(
-    /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2300}-\u{23FF}]/gu,
-    ""
-  );
-}
-
 function layoutText(str) {
   glyphs = [];
   textTotalWidth = 0;
@@ -435,7 +424,7 @@ function layoutText(str) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  let content = removeEmojis(str);
+  let content = str;
   if (!content || content.length === 0) {
     if (isLoading.value) {
       content = "Chargement...";
@@ -446,8 +435,9 @@ function layoutText(str) {
     }
   }
 
-  for (let i = 0; i < content.length; i++) {
-    const ch = content[i];
+  // Use Array.from to correctly handle surrogate pairs (emojis)
+  const chars = Array.from(content);
+  for (const ch of chars) {
     let w = ctx.measureText(ch).width;
     // Reduce space width to make words closer
     if (ch === " ") {
