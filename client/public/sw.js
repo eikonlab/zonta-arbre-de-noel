@@ -1,4 +1,5 @@
 const CACHE_NAME = 'zonta-admin-v1';
+const API_URL = 'http://localhost:8102'; // Must match VITE_SERVER_URL in .env
 const urlsToCache = [
   '/admin',
   '/assets/',
@@ -127,4 +128,19 @@ self.addEventListener('notificationclick', (event) => {
         }
       })
   );
+});
+
+// Notification close event
+self.addEventListener('notificationclose', (event) => {
+  const notification = event.notification;
+  if (notification.tag) {
+    // Notify server to dismiss on other devices
+    fetch(`${API_URL}/push/dismiss`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ tag: notification.tag })
+    }).catch(err => console.error('Error notifying server of dismissal:', err));
+  }
 });

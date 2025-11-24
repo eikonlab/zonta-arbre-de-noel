@@ -277,6 +277,28 @@ app.post('/push/unsubscribe', async (req, res) => {
   }
 });
 
+app.post('/push/dismiss', async (req, res) => {
+  const { tag } = req.body;
+
+  if (!tag) {
+    return res.status(400).json({ error: 'Tag is required' });
+  }
+
+  try {
+    // Send 'close' action to all subscribers
+    // This will close the notification on all other devices
+    await sendPushNotification({
+      action: 'close',
+      tag: tag
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error sending dismiss signal:', error);
+    res.status(500).json({ error: 'Failed to send dismiss signal' });
+  }
+});
+
 app.get('/push/vapid-public-key', (req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
 });
