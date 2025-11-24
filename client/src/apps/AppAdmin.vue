@@ -1,5 +1,24 @@
 <template>
-  <div class="admin-container">
+  <div
+    class="admin-container"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
+  >
+    <div
+      class="pull-indicator"
+      :style="{
+        height: isRefreshing ? '60px' : pullDistance + 'px',
+        opacity: Math.min(pullDistance / 50, 1),
+      }"
+    >
+      <div class="pull-content">
+        <span v-if="isRefreshing" class="refresh-spinner">🔄</span>
+        <span v-else-if="pullDistance > 100">⬆️ Relâcher pour actualiser</span>
+        <span v-else>⬇️ Tirer pour actualiser</span>
+      </div>
+    </div>
+
     <header class="admin-header">
       <h1>Modération des Messages</h1>
       <div class="header-actions">
@@ -257,6 +276,9 @@ export default {
       showHidden: true,
       showFlagged: true,
       showNotifHelp: true,
+      pullStartY: 0,
+      pullDistance: 0,
+      isRefreshing: false,
     };
   },
 
@@ -337,8 +359,12 @@ export default {
         import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
       this.socket = io(API_URL);
 
-      // Register as admin to receive privileged events if needed later
-      this.socket.emit("register-admin");
+      this.socket.on("connect", () => {
+        // Register as admin to receive privileged events
+        this.socket.emit("register-admin");
+        // Reload messages to ensure we didn't miss anything while disconnected
+        this.loadMessages();
+      });
 
       this.socket.on("new-message", (message) => {
         // Respect server-provided hidden flag
@@ -477,6 +503,37 @@ export default {
       if (toxicity > 0.4) return "medium";
       return "low";
     },
+
+    handleTouchStart(e) {
+      if (window.scrollY === 0) {
+        this.pullStartY = e.touches[0].clientY;
+      }
+    },
+
+    handleTouchMove(e) {
+      if (this.pullStartY && window.scrollY === 0) {
+        const currentY = e.touches[0].clientY;
+        const diff = currentY - this.pullStartY;
+        if (diff > 0) {
+          // Add resistance
+          this.pullDistance = Math.pow(diff, 0.8);
+          // Prevent default scrolling if we are pulling down
+          if (diff > 10 && e.cancelable) {
+            e.preventDefault();
+          }
+        }
+      }
+    },
+
+    async handleTouchEnd() {
+      if (this.pullDistance > 100) {
+        this.isRefreshing = true;
+        await this.refreshMessages();
+        this.isRefreshing = false;
+      }
+      this.pullStartY = 0;
+      this.pullDistance = 0;
+    },
   },
 };
 </script>
@@ -611,7 +668,9 @@ export default {
   background: #5c3317;
   color: #fdbc2e;
   box-shadow: 0 4px 16px rgba(92, 51, 23, 0.3);
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .btn-notification:hover {
@@ -644,18 +703,6 @@ export default {
 .btn-small {
   padding: 8px 16px;
   font-size: 0.9em;
-}
-
-.btn-notification {
-  background: #5c3317;
-  color: #fdbc2e;
-  box-shadow: 0 4px 16px rgba(92, 51, 23, 0.3);
-  white-space: nowrap;
-}
-
-.btn-notification:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(92, 51, 23, 0.4);
 }
 
 .notif-help {
@@ -1187,6 +1234,42 @@ export default {
 
 .btn-delete svg {
   display: block;
+}
+
+/* Pull to Refresh Styles */
+.pull-indicator {
+  overflow: hidden;
+  transition: height 0.2s ease, opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  color: #5c3317;
+  font-weight: bold;
+  border-radius: 0 0 20px 20px;
+  margin: -20px -20px 20px -20px;
+  box-shadow: 0 4px 10px rgba(92, 51, 23, 0.1);
+}
+
+.pull-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+.refresh-spinner {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 768px) {
