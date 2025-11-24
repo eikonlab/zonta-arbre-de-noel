@@ -186,7 +186,7 @@ onUnmounted(() => {
   background: url("/bg.jpg") #fdbc2e;
   background-size: cover;
   background-position: center;
-  padding: 4vh 0 4vh 0;
+  padding: 8vh 6vw;
   box-sizing: border-box;
   overflow: hidden;
   overscroll-behavior: none;
@@ -276,9 +276,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   /* Make the square as big as possible but always square, but leave space for text above */
-  width: min(90vw, 70vh);
-  height: min(90vw, 70vh);
-  max-width: 90vw;
+  width: min(80vw, 70vh);
+  height: min(80vw, 70vh);
+  max-width: 80vw;
   max-height: 70vh;
   box-sizing: border-box;
   border-radius: 1.5rem;
