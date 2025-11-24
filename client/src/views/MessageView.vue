@@ -6,13 +6,30 @@
     <!-- Simple mode: just centered text -->
     <div v-if="SIMPLE_MODE" class="simple-container">
       <div class="simple-text">
-        {{ currentMessage?.content || "Chargement du message..." }}
+        {{
+          removeEmojis(currentMessage?.content) || "Chargement du message..."
+        }}
       </div>
     </div>
 
     <!-- Normal mode: canvas animation -->
     <div v-else class="canvas-container">
       <canvas ref="canvasEl"></canvas>
+    </div>
+
+    <!-- Hidden element to force font loading -->
+    <div
+      style="
+        font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
+          'Noto Emoji', 'Noto Sans';
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+        opacity: 0;
+        pointer-events: none;
+      "
+    >
+      😀 test
     </div>
   </div>
 </template>
@@ -131,8 +148,9 @@ let accumulator = 0;
 
 // Font settings
 const FONT_SIZE = 110; // px (reduced for Pi performance)
-const FONT_FAMILY = "'Noto Sans', 'Noto Emoji', sans-serif";
-const FONT_WEIGHT = 600;
+const FONT_FAMILY =
+  "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Noto Emoji', 'Noto Sans', sans-serif";
+const FONT_WEIGHT = 400;
 const LETTER_SPACING = 2; // px additional spacing per glyph
 const ROTATE_GLYPHS = true; // set false to not rotate characters (faster)
 
@@ -399,6 +417,15 @@ function buildSamples() {
   }
 }
 
+// Utils: Emoji removal
+function removeEmojis(str) {
+  if (!str) return "";
+  return str.replace(
+    /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2300}-\u{23FF}]/gu,
+    ""
+  );
+}
+
 function layoutText(str) {
   glyphs = [];
   textTotalWidth = 0;
@@ -408,7 +435,7 @@ function layoutText(str) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  let content = str;
+  let content = removeEmojis(str);
   if (!content || content.length === 0) {
     if (isLoading.value) {
       content = "Chargement...";
@@ -587,6 +614,26 @@ function prepareScene() {
 
 // Messages lifecycle
 async function loadMessages() {
+  // Special view for ID 6: Emoji test
+  if (templateId.value === 6) {
+    messages.value = [
+      {
+        id: 999999,
+        content: "😀 😃 😄 😁 😆 😅 😂 🤣 🎄 🎅 🤶 🦌 🎁 🔔 ❄️ ⛄",
+        author: "System",
+        priorityNumber: 6,
+        hidden: false,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    // Force update immediately
+    currentMessage.value = messages.value[0];
+    nextMessage.value = messages.value[0];
+    isLoading.value = false;
+    prepareScene();
+    return;
+  }
+
   isLoading.value = true;
   try {
     const response = await axios.get(`${API_URL}/messages`);
@@ -618,7 +665,8 @@ function updateMessage() {
 // Watch for template change
 watch(
   () => route.params.id,
-  () => {
+  async () => {
+    await loadMessages();
     prepareScene();
     startAnimation();
   }
@@ -632,7 +680,33 @@ window.addEventListener("resize", onResize);
 
 onMounted(async () => {
   // Wait for fonts to load to ensure emojis render correctly on canvas
-  await document.fonts.ready;
+  try {
+    // Load fonts with the specific weight/size we use
+    const fontSpec = `${FONT_WEIGHT} ${FONT_SIZE}px`;
+    // Force load both fonts
+    await Promise.all([
+      document.fonts.load(`${fontSpec} 'Noto Color Emoji'`),
+      document.fonts.load(`${fontSpec} 'Noto Emoji'`),
+      document.fonts.load(`${fontSpec} 'Noto Sans'`),
+    ]);
+    // Wait for everything to be ready
+    await document.fonts.ready;
+
+    console.log("Fonts loaded status:");
+    console.log(
+      "Noto Color Emoji:",
+      document.fonts.check(`${fontSpec} 'Noto Color Emoji'`)
+    );
+    console.log(
+      "Noto Emoji:",
+      document.fonts.check(`${fontSpec} 'Noto Emoji'`)
+    );
+
+    // Extra safety delay for Canvas font availability
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  } catch (e) {
+    console.warn("Font loading issue:", e);
+  }
 
   await loadMessages();
 
