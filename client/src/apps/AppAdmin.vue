@@ -44,17 +44,12 @@
         <label class="checkbox-container">
           <input type="checkbox" v-model="showVisible" />
           <span class="checkmark"></span>
-          Afficher visibles
+          Afficher visibles ({{ visibleCount }})
         </label>
         <label class="checkbox-container">
           <input type="checkbox" v-model="showHidden" />
           <span class="checkmark"></span>
-          Afficher masqués
-        </label>
-        <label class="checkbox-container">
-          <input type="checkbox" v-model="showFlagged" />
-          <span class="checkmark"></span>
-          Afficher signalés
+          Afficher masqués ({{ hiddenCount }})
         </label>
       </div>
     </div>
@@ -274,7 +269,6 @@ export default {
       socket: null,
       showVisible: true,
       showHidden: true,
-      showFlagged: true,
       showNotifHelp: true,
       pullStartY: 0,
       pullDistance: 0,
@@ -321,12 +315,17 @@ export default {
   },
 
   computed: {
+    visibleCount() {
+      return this.messages.filter((m) => !m.hidden).length;
+    },
+    hiddenCount() {
+      return this.messages.filter((m) => m.hidden).length;
+    },
     filteredMessages() {
       return this.messages
         .filter((message) => {
           if (!this.showVisible && !message.hidden) return false;
           if (!this.showHidden && message.hidden) return false;
-          if (!this.showFlagged && message.flagged) return false;
           return true;
         })
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
