@@ -46,7 +46,7 @@ const translations = {
     alertAlreadyPosted: "Sie haben heute bereits eine Nachricht gepostet. Bitte versuchen Sie es morgen erneut.",
     alertError: "Fehler beim Senden der Nachricht. Bitte versuchen Sie es erneut.",
     pageTitle: "Zonta - Nachricht hinzufügen",
-    qrInstruction: "Scannen Sie diesen Code, um eine Nachricht an den Sprecherbaum zu senden",
+    qrInstruction: "Scannen Sie diesen Code, um eine Nachricht an den Botschafts-Baum zu senden.",
     messagesSent: "Nachrichten gesendet",
     selectScreen: "Bildschirm auswählen",
     screen: "Bildschirm"
