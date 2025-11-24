@@ -176,6 +176,10 @@ function updateMessage(id, updates) {
       fields.push('flagReason = ?');
       params.push(updates.flagReason === null ? null : updates.flagReason);
     }
+    if (typeof updates.priorityNumber !== 'undefined') {
+      fields.push('priorityNumber = ?');
+      params.push(updates.priorityNumber);
+    }
 
     if (fields.length === 0) {
       return reject(new Error('No valid fields to update'));
