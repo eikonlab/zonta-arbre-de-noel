@@ -131,7 +131,7 @@ let accumulator = 0;
 
 // Font settings
 const FONT_SIZE = 110; // px (reduced for Pi performance)
-const FONT_FAMILY = "Arial, sans-serif";
+const FONT_FAMILY = "'Noto Sans', 'Noto Emoji', sans-serif";
 const FONT_WEIGHT = 600;
 const LETTER_SPACING = 2; // px additional spacing per glyph
 const ROTATE_GLYPHS = true; // set false to not rotate characters (faster)
@@ -631,6 +631,9 @@ function onResize() {
 window.addEventListener("resize", onResize);
 
 onMounted(async () => {
+  // Wait for fonts to load to ensure emojis render correctly on canvas
+  await document.fonts.ready;
+
   await loadMessages();
 
   // Set up socket listeners
