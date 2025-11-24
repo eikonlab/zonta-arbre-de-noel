@@ -763,6 +763,22 @@ onUnmounted(() => {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: auto;
   touch-action: none;
+  position: relative;
+}
+
+.message-display::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("/bg.jpg");
+  background-size: cover;
+  background-position: center;
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .simple-container {
@@ -773,6 +789,8 @@ onUnmounted(() => {
   width: 100%;
   height: 100vh;
   padding: 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .simple-text {
@@ -793,6 +811,8 @@ onUnmounted(() => {
   width: 100%;
   height: 100vh;
   will-change: transform;
+  position: relative;
+  z-index: 1;
 }
 
 canvas {
