@@ -54,6 +54,12 @@ const messageCount = ref(null);
 let intervalId = null;
 let langIntervalId = null;
 let socket = null;
+let tokenRefreshTimer = null;
+
+function scheduleTokenRefresh(delay) {
+  if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
+  tokenRefreshTimer = setTimeout(fetchToken, delay);
+}
 
 // Set page title
 watch(
@@ -75,8 +81,10 @@ async function fetchMessageCount() {
 
 async function fetchToken() {
   try {
-    loading.value = true;
-    error.value = "";
+    // Only show loading on first load or if we don't have a QR code
+    if (!qrCodeDataUrl.value) {
+      loading.value = true;
+    }
 
     // Get secret from URL query params if present
     const secret = route.query.secret;
@@ -84,32 +92,49 @@ async function fetchToken() {
     const response = await axios.get(`${API_URL}/api/current-token`, {
       params: { secret },
     });
-    currentToken.value = response.data.token;
 
-    // No need to handle expiry or countdown, just generate QR code
+    // Clear error if successful
+    error.value = "";
 
-    // Generate URL with token
-    currentUrl.value = `${CLIENT_URL}?token=${currentToken.value}`;
+    const newToken = response.data.token;
 
-    // Generate QR code with dark brown color
-    qrCodeDataUrl.value = await QRCode.toDataURL(currentUrl.value, {
-      width: 2048,
-      margin: 2,
-      color: {
-        dark: "#5C3317", // Dark brown
-        light: "#ffffff",
-      },
-    });
+    // Only update if token changed
+    if (currentToken.value !== newToken) {
+      currentToken.value = newToken;
+
+      // Generate URL with token
+      currentUrl.value = `${CLIENT_URL}?token=${currentToken.value}`;
+
+      // Generate QR code with dark brown color
+      qrCodeDataUrl.value = await QRCode.toDataURL(currentUrl.value, {
+        width: 2048,
+        margin: 2,
+        color: {
+          dark: "#5C3317", // Dark brown
+          light: "#ffffff",
+        },
+      });
+    }
 
     loading.value = false;
+
+    // Schedule next refresh in 30 seconds
+    scheduleTokenRefresh(30000);
   } catch (err) {
     console.error("Error fetching token:", err);
-    if (err.response && err.response.status === 403) {
-      error.value = "Accès refusé : IP non autorisée ou secret invalide.";
-    } else {
-      error.value = err.message || "Erreur de connexion au serveur";
+
+    // Only show error if we don't have a QR code yet
+    if (!qrCodeDataUrl.value) {
+      if (err.response && err.response.status === 403) {
+        error.value = "Accès refusé : IP non autorisée ou secret invalide.";
+      } else {
+        error.value = err.message || "Erreur de connexion au serveur";
+      }
     }
     loading.value = false;
+
+    // Retry quickly if failed (5 seconds)
+    scheduleTokenRefresh(5000);
   }
 }
 
@@ -119,6 +144,12 @@ onMounted(() => {
 
   // Initialize socket
   socket = io(API_URL);
+
+  socket.on("connect", () => {
+    // Refresh token immediately on reconnection
+    fetchToken();
+  });
+
   socket.on("message-count-update", (count) => {
     messageCount.value = count;
   });
@@ -140,6 +171,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (intervalId) clearInterval(intervalId);
   if (langIntervalId) clearInterval(langIntervalId);
+  if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
   if (socket) socket.disconnect();
 });
 </script>
