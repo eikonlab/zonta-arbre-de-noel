@@ -461,7 +461,7 @@ app.post('/messages', async (req, res) => {
 // Mettre à jour un message (pour la modération)
 app.patch('/messages/:id', async (req, res) => {
   const messageId = parseInt(req.params.id);
-  const { hidden, flagged, flagReason } = req.body;
+  const { hidden, flagged, flagReason, priorityNumber } = req.body;
 
   // Validate payload (all optional)
   if (
@@ -479,9 +479,14 @@ app.patch('/messages/:id', async (req, res) => {
   ) {
     return res.status(400).json({ error: 'Champ flagReason invalide' });
   }
+  if (
+    typeof priorityNumber !== 'undefined' && (isNaN(parseInt(priorityNumber)) || parseInt(priorityNumber) < 1 || parseInt(priorityNumber) > 5)
+  ) {
+    return res.status(400).json({ error: 'Champ priorityNumber invalide' });
+  }
 
   try {
-    const updatedMessage = await updateMessage(messageId, { hidden, flagged, flagReason });
+    const updatedMessage = await updateMessage(messageId, { hidden, flagged, flagReason, priorityNumber });
     io.emit('message-updated', updatedMessage);
 
     // If message is displayed (hidden: false), remove notification

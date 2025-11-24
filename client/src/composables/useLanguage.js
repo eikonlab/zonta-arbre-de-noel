@@ -23,7 +23,9 @@ const translations = {
     alertError: "Erreur lors de l'envoi du message. Veuillez réessayer.",
     pageTitle: "Zonta - Ajouter un message",
     qrInstruction: "Scannez ce code pour envoyer un message sur le sapin porte-paroles",
-    messagesSent: "messages envoyés"
+    messagesSent: "messages envoyés",
+    selectScreen: "Choisir l'écran",
+    screen: "Écran"
   },
   de: {
     verifying: "🔍 Überprüfung läuft...",
@@ -45,7 +47,9 @@ const translations = {
     alertError: "Fehler beim Senden der Nachricht. Bitte versuchen Sie es erneut.",
     pageTitle: "Zonta - Nachricht hinzufügen",
     qrInstruction: "Scannen Sie diesen Code, um eine Nachricht an den Sprecherbaum zu senden",
-    messagesSent: "Nachrichten gesendet"
+    messagesSent: "Nachrichten gesendet",
+    selectScreen: "Bildschirm auswählen",
+    screen: "Bildschirm"
   }
 };
 

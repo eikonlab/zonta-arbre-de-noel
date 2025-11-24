@@ -81,9 +81,16 @@
                     <span class="date">{{
                       formatDate(message.createdAt)
                     }}</span>
-                    <span v-if="message.priorityNumber" class="priority-pill">
-                      Écran {{ message.priorityNumber }}
-                    </span>
+                    <select
+                      v-if="message.priorityNumber"
+                      class="priority-select"
+                      :value="message.priorityNumber"
+                      @change="updatePriority(message, $event)"
+                    >
+                      <option v-for="n in 5" :key="n" :value="n">
+                        Écran {{ n }}
+                      </option>
+                    </select>
                   </div>
                 </td>
                 <td>
@@ -153,9 +160,16 @@
                 <span class="author">{{ message.author }}</span>
                 <div class="date-priority-group">
                   <span class="date">{{ formatDate(message.createdAt) }}</span>
-                  <span v-if="message.priorityNumber" class="priority-pill">
-                    Écran {{ message.priorityNumber }}
-                  </span>
+                  <select
+                    v-if="message.priorityNumber"
+                    class="priority-select"
+                    :value="message.priorityNumber"
+                    @change="updatePriority(message, $event)"
+                  >
+                    <option v-for="n in 5" :key="n" :value="n">
+                      Écran {{ n }}
+                    </option>
+                  </select>
                 </div>
               </div>
               <div class="message-card-badges">
@@ -397,6 +411,33 @@ export default {
         message.hidden = !message.hidden; // naive revert
         console.error("Erreur lors de la mise à jour:", error);
         alert("Erreur lors de la mise à jour du message");
+      }
+    },
+
+    async updatePriority(message, e) {
+      const newPriority = parseInt(e.target.value);
+      const oldPriority = message.priorityNumber;
+
+      try {
+        // Optimistic update
+        message.priorityNumber = newPriority;
+
+        const API_URL =
+          import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+
+        const { data } = await axios.patch(
+          `${API_URL}/messages/${message.id}`,
+          { priorityNumber: newPriority }
+        );
+
+        // Sync local copy with server state
+        const index = this.messages.findIndex((m) => m.id === message.id);
+        if (index !== -1) this.messages[index] = data;
+      } catch (error) {
+        // Revert on error
+        message.priorityNumber = oldPriority;
+        console.error("Erreur lors de la mise à jour de l'écran:", error);
+        alert("Erreur lors de la mise à jour de l'écran");
       }
     },
 
@@ -1000,6 +1041,31 @@ export default {
   background: #5c3317;
   border-radius: 12px;
   white-space: nowrap;
+}
+
+.priority-select {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.75em;
+  font-weight: 600;
+  color: white;
+  background: #5c3317;
+  border: none;
+  border-radius: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+}
+
+.priority-select:hover {
+  background: #7a4420;
+}
+
+.priority-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(92, 51, 23, 0.3);
 }
 
 .toxicity-score {
