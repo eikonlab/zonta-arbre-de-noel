@@ -144,6 +144,9 @@ let rafId = null;
 let lastTs = 0;
 let accumulator = 0;
 
+// Reusable object to prevent Garbage Collection (GC) freezes
+const tempPt = { x: 0, y: 0, angle: 0 };
+
 // Font settings
 const FONT_SIZE = 110; // px (reduced for Pi performance)
 const FONT_FAMILY =
@@ -473,26 +476,42 @@ function drawPathLine() {
 }
 
 // Find interpolated point given arc-length s (binary search)
+// OPTIMIZED: Writes to shared 'tempPt' object instead of returning new one
 function sampleAtS(s) {
   if (samples.length === 0) return null;
-  if (s <= 0) return samples[0];
-  if (s >= pathLength) return samples[samples.length - 1];
+
+  // Clamp s
+  let effectiveS = s;
+  if (s <= 0) effectiveS = 0;
+  if (s >= pathLength) effectiveS = pathLength;
+
+  // If out of bounds (should be handled by clamp, but safety check)
+  if (effectiveS < 0 || effectiveS > pathLength) {
+    // Fallback to ends
+    const fallback = s <= 0 ? samples[0] : samples[samples.length - 1];
+    tempPt.x = fallback.x;
+    tempPt.y = fallback.y;
+    tempPt.angle = fallback.angle;
+    return tempPt;
+  }
 
   let lo = 0;
   let hi = samples.length - 1;
   while (lo + 1 < hi) {
     const mid = (lo + hi) >> 1;
-    if (samples[mid].s < s) lo = mid;
+    if (samples[mid].s < effectiveS) lo = mid;
     else hi = mid;
   }
   const a = samples[lo];
   const b = samples[hi];
-  const t = (s - a.s) / Math.max(b.s - a.s, 1e-6);
-  const x = a.x + (b.x - a.x) * t;
-  const y = a.y + (b.y - a.y) * t;
-  // Angle: simple lerp is fine for small steps
-  let angle = a.angle + (b.angle - a.angle) * t;
-  return { x, y, angle };
+  const t = (effectiveS - a.s) / Math.max(b.s - a.s, 1e-6);
+
+  // Write to reusable object
+  tempPt.x = a.x + (b.x - a.x) * t;
+  tempPt.y = a.y + (b.y - a.y) * t;
+  tempPt.angle = a.angle + (b.angle - a.angle) * t;
+
+  return tempPt;
 }
 
 function clearCanvas() {
