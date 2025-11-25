@@ -192,7 +192,7 @@ async function sendMessage() {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: url("/bg.jpg") #fdbc2e;
+  background: url("/bg.png") #fdbc2e;
   background-size: cover;
   background-position: center;
   padding: 2rem;

@@ -109,7 +109,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url("/bg.jpg") #fdbc2e;
+  background: url("/bg.png") #fdbc2e;
   background-size: cover;
   background-position: center;
   padding: 20px;
