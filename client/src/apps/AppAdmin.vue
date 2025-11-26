@@ -284,6 +284,8 @@ export default {
       isSubscribed: notifSubscribed,
       subscribe,
       unsubscribe,
+      checkSubscription,
+      stopHealthCheck,
     } = usePushNotifications();
 
     const handleLogout = () => {
@@ -311,6 +313,8 @@ export default {
       notifSupported,
       notifSubscribed,
       toggleNotifications,
+      checkSubscription,
+      stopHealthCheck,
     };
   },
 
@@ -335,11 +339,42 @@ export default {
   async mounted() {
     await this.initializeSocket();
     await this.loadMessages();
+
+    // Check subscription health on mount
+    if (this.notifSupported && this.notifSubscribed) {
+      await this.checkSubscription();
+    }
+
+    // Add visibility change handler to check subscription when page becomes visible
+    this.handleVisibilityChange = async () => {
+      if (
+        document.visibilityState === "visible" &&
+        this.notifSupported &&
+        this.notifSubscribed
+      ) {
+        console.log("Page visible, checking subscription health...");
+        await this.checkSubscription();
+      }
+    };
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
   },
 
   beforeUnmount() {
     if (this.socket) {
       this.socket.disconnect();
+    }
+
+    // Clean up visibility listener
+    if (this.handleVisibilityChange) {
+      document.removeEventListener(
+        "visibilitychange",
+        this.handleVisibilityChange
+      );
+    }
+
+    // Clean up health check interval
+    if (this.stopHealthCheck) {
+      this.stopHealthCheck();
     }
   },
 

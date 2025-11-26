@@ -116,6 +116,7 @@ export function usePushNotifications() {
       }
 
       isSubscribed.value = true;
+      startHealthCheck(); // Start periodic health checks
       return sub;
     } catch (error) {
       console.error('Error subscribing to push notifications:', error);
@@ -143,6 +144,7 @@ export function usePushNotifications() {
 
       subscription.value = null;
       isSubscribed.value = false;
+      stopHealthCheck(); // Stop health checks
     } catch (error) {
       console.error('Error unsubscribing from push notifications:', error);
       throw error;
@@ -159,6 +161,18 @@ export function usePushNotifications() {
       const sub = await registration.pushManager.getSubscription();
 
       if (sub) {
+        // Check if subscription has expirationTime and if it's expired or expiring soon
+        const now = Date.now();
+        const gracePeriod = 24 * 60 * 60 * 1000; // 24 hours
+
+        // If subscription is expired or will expire soon, renew it
+        if (sub.expirationTime && sub.expirationTime - now < gracePeriod) {
+          console.log('Push subscription expiring soon, renewing...');
+          await sub.unsubscribe();
+          // Re-subscribe
+          return await subscribe();
+        }
+
         subscription.value = sub;
         isSubscribed.value = true;
 
@@ -178,13 +192,37 @@ export function usePushNotifications() {
       console.error('Error checking subscription:', error);
     }
 
+    isSubscribed.value = false;
+    subscription.value = null;
     return false;
   };
 
-  onMounted(() => {
+  // Periodically check subscription health (every 30 minutes)
+  let healthCheckInterval = null;
+  const startHealthCheck = () => {
+    if (healthCheckInterval) return;
+
+    healthCheckInterval = setInterval(async () => {
+      if (isSupported.value && isSubscribed.value) {
+        await checkSubscription();
+      }
+    }, 30 * 60 * 1000); // 30 minutes
+  };
+
+  const stopHealthCheck = () => {
+    if (healthCheckInterval) {
+      clearInterval(healthCheckInterval);
+      healthCheckInterval = null;
+    }
+  };
+
+  onMounted(async () => {
     checkSupport();
     if (isSupported.value) {
-      checkSubscription();
+      const hasSubscription = await checkSubscription();
+      if (hasSubscription) {
+        startHealthCheck(); // Start health checks if subscribed
+      }
     }
   });
 
@@ -197,6 +235,7 @@ export function usePushNotifications() {
     requestPermission,
     subscribe,
     unsubscribe,
-    checkSubscription
+    checkSubscription,
+    stopHealthCheck
   };
 }

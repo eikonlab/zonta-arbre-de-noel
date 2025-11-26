@@ -144,3 +144,53 @@ self.addEventListener('notificationclose', (event) => {
     }).catch(err => console.error('Error notifying server of dismissal:', err));
   }
 });
+
+// Handle subscription changes (iOS Safari can drop subscriptions)
+self.addEventListener('pushsubscriptionchange', (event) => {
+  console.log('Service Worker: Push subscription changed');
+
+  event.waitUntil(
+    // Get VAPID public key and resubscribe
+    fetch(`${API_URL}/push/vapid-public-key`)
+      .then(response => response.json())
+      .then(data => {
+        const publicKey = data.publicKey;
+
+        // Convert VAPID key
+        function urlBase64ToUint8Array(base64String) {
+          const padding = '='.repeat((4 - base64String.length % 4) % 4);
+          const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+          const rawData = atob(base64);
+          const outputArray = new Uint8Array(rawData.length);
+          for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+          }
+          return outputArray;
+        }
+
+        // Resubscribe
+        return self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
+      })
+      .then(newSubscription => {
+        // Send new subscription to server
+        return fetch(`${API_URL}/push/subscribe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newSubscription.toJSON())
+        });
+      })
+      .then(() => {
+        console.log('Service Worker: Successfully resubscribed after subscription change');
+      })
+      .catch(err => {
+        console.error('Service Worker: Error resubscribing after subscription change:', err);
+      })
+  );
+});
