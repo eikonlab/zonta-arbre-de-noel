@@ -627,26 +627,6 @@ function prepareScene() {
 
 // Messages lifecycle
 async function loadMessages() {
-  // Special view for ID 6: Emoji test
-  if (templateId.value === 6) {
-    messages.value = [
-      {
-        id: 999999,
-        content: "😀 😃 😄 😁 😆 😅 😂 🤣 🎄 🎅 🤶 🦌 🎁 🔔 ❄️ ⛄",
-        author: "System",
-        priorityNumber: 6,
-        hidden: false,
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    // Force update immediately
-    currentMessage.value = messages.value[0];
-    nextMessage.value = messages.value[0];
-    isLoading.value = false;
-    prepareScene();
-    return;
-  }
-
   isLoading.value = true;
   try {
     const response = await axios.get(`${API_URL}/messages`);
@@ -795,7 +775,7 @@ onUnmounted(() => {
   background-image: url("/bg.png");
   background-size: cover;
   background-position: center;
-  opacity: 0.5;
+  opacity: 0.7;
   pointer-events: none;
   z-index: 0;
 }
