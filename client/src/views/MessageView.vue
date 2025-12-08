@@ -1,8 +1,5 @@
 <template>
-  <div
-    class="message-display"
-    :style="{ backgroundColor: currentMessageColor }"
-  >
+  <div class="message-display" :style="{ backgroundColor: currentMessageColor }">
     <!-- Simple mode: just centered text -->
     <div v-if="SIMPLE_MODE" class="simple-container">
       <div class="simple-text">
@@ -55,7 +52,7 @@ const currentMessage = ref(null);
 const nextMessage = ref(null);
 const currentMessageColor = ref("#fdbc2e");
 const currentTextColor = ref("#fff");
-const animationSpeed = 90; // px/s constant speed (reduced for Pi)
+const animationSpeed = 60; // px/s constant speed (further reduced for Pi)
 const isLoading = ref(true);
 
 // Page title
@@ -137,7 +134,7 @@ let textTotalWidth = 0;
 
 // Animation
 let offsetS = 0; // first glyph offset along path (CSS px)
-const TARGET_FPS = 30;
+const TARGET_FPS = 20; // Reduced from 30 to 20 for Pi performance
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let rafId = null;
 let lastTs = 0;
@@ -147,12 +144,12 @@ let accumulator = 0;
 const tempPt = { x: 0, y: 0, angle: 0 };
 
 // Font settings
-const FONT_SIZE = 110; // px (reduced for Pi performance)
+const FONT_SIZE = 90; // px (further reduced for Pi performance)
 const FONT_FAMILY =
   "'Noto Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Noto Sans', sans-serif";
 const FONT_WEIGHT = 400;
 const LETTER_SPACING = 2; // px additional spacing per glyph
-const ROTATE_GLYPHS = true; // set false to not rotate characters (faster)
+const ROTATE_GLYPHS = true; // Disabled rotation for better Pi performance
 
 // Utils: quadratic Bezier
 function qPoint(p0, p1, p2, t) {
@@ -186,14 +183,8 @@ function cDeriv(p0, p1, p2, p3, t) {
   const mt2 = mt * mt;
   const t2 = t * t;
   return {
-    x:
-      3 * mt2 * (p1.x - p0.x) +
-      6 * mt * t * (p2.x - p1.x) +
-      3 * t2 * (p3.x - p2.x),
-    y:
-      3 * mt2 * (p1.y - p0.y) +
-      6 * mt * t * (p2.y - p1.y) +
-      3 * t2 * (p3.y - p2.y),
+    x: 3 * mt2 * (p1.x - p0.x) + 6 * mt * t * (p2.x - p1.x) + 3 * t2 * (p3.x - p2.x),
+    y: 3 * mt2 * (p1.y - p0.y) + 6 * mt * t * (p2.y - p1.y) + 3 * t2 * (p3.y - p2.y),
   };
 }
 
@@ -230,8 +221,7 @@ function approxCubicLen(p0, p1, p2, p3) {
 // Parse SVG path with absolute M, Q, and C commands
 function parsePath(d) {
   // Match commands and numbers
-  const tokens =
-    d.match(/[MmQqCcLlHhVvSs]|[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/gi) || [];
+  const tokens = d.match(/[MmQqCcLlHhVvSs]|[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/gi) || [];
   const segs = [];
   let i = 0;
   let cur = { x: 0, y: 0 };
@@ -286,8 +276,7 @@ function parsePath(d) {
       const cy = parseFloat(tokens[i++]);
       const x = parseFloat(tokens[i++]);
       const y = parseFloat(tokens[i++]);
-      const ctrl =
-        tok === "Q" ? { x: cx, y: cy } : { x: cur.x + cx, y: cur.y + cy };
+      const ctrl = tok === "Q" ? { x: cx, y: cy } : { x: cur.x + cx, y: cur.y + cy };
       const next = tok === "Q" ? { x, y } : { x: cur.x + x, y: cur.y + y };
       segs.push({ type: "Q", p0: { ...cur }, p1: ctrl, p2: next });
       cur = next;
@@ -298,10 +287,8 @@ function parsePath(d) {
       const cy2 = parseFloat(tokens[i++]);
       const x = parseFloat(tokens[i++]);
       const y = parseFloat(tokens[i++]);
-      const ctrl1 =
-        tok === "C" ? { x: cx1, y: cy1 } : { x: cur.x + cx1, y: cur.y + cy1 };
-      const ctrl2 =
-        tok === "C" ? { x: cx2, y: cy2 } : { x: cur.x + cx2, y: cur.y + cy2 };
+      const ctrl1 = tok === "C" ? { x: cx1, y: cy1 } : { x: cur.x + cx1, y: cur.y + cy1 };
+      const ctrl2 = tok === "C" ? { x: cx2, y: cy2 } : { x: cur.x + cx2, y: cur.y + cy2 };
       const next = tok === "C" ? { x, y } : { x: cur.x + x, y: cur.y + y };
       segs.push({ type: "C", p0: { ...cur }, p1: ctrl1, p2: ctrl2, p3: next });
       cur = next;
@@ -319,8 +306,8 @@ function computeViewport() {
   const rect = canvas.parentElement.getBoundingClientRect();
   view.cssW = Math.max(1, Math.floor(rect.width));
   view.cssH = Math.max(1, Math.floor(rect.height));
-  // Cap DPR at 1 on low-powered devices for better performance
-  view.dpr = Math.min(window.devicePixelRatio || 1, 1);
+  // Force DPR to 1 on Pi for optimal performance
+  view.dpr = 1;
 
   // Resize backing store
   canvas.width = Math.floor(view.cssW * view.dpr);
@@ -361,10 +348,10 @@ function buildSamples() {
       // Estimate segment length in design space
       const L = approxQuadLen(p0, p1, p2);
 
-      // Decide sample count for ~16px resolution in CSS pixels after scaling
-      const targetStepCss = 16;
+      // Decide sample count for ~24px resolution in CSS pixels after scaling (reduced detail for Pi)
+      const targetStepCss = 24;
       const targetStepDesign = targetStepCss / Math.max(view.scale, 1e-6);
-      const steps = Math.max(8, Math.ceil(L / targetStepDesign));
+      const steps = Math.max(6, Math.ceil(L / targetStepDesign));
 
       for (let i = 0; i <= steps; i++) {
         const t = i / steps;
@@ -392,10 +379,10 @@ function buildSamples() {
       // Estimate segment length in design space
       const L = approxCubicLen(p0, p1, p2, p3);
 
-      // Decide sample count for ~16px resolution in CSS pixels after scaling
-      const targetStepCss = 16;
+      // Decide sample count for ~24px resolution in CSS pixels after scaling (reduced detail for Pi)
+      const targetStepCss = 24;
       const targetStepDesign = targetStepCss / Math.max(view.scale, 1e-6);
-      const steps = Math.max(8, Math.ceil(L / targetStepDesign));
+      const steps = Math.max(6, Math.ceil(L / targetStepDesign));
 
       for (let i = 0; i <= steps; i++) {
         const t = i / steps;
@@ -689,10 +676,7 @@ onMounted(async () => {
       "Noto Color Emoji:",
       document.fonts.check(`${fontSpec} 'Noto Color Emoji'`)
     );
-    console.log(
-      "Noto Emoji:",
-      document.fonts.check(`${fontSpec} 'Noto Emoji'`)
-    );
+    console.log("Noto Emoji:", document.fonts.check(`${fontSpec} 'Noto Emoji'`));
 
     // Extra safety delay for Canvas font availability
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -764,20 +748,7 @@ onUnmounted(() => {
   position: relative;
 }
 
-.message-display::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url("/bg.png");
-  background-size: cover;
-  background-position: center;
-  opacity: 0.7;
-  pointer-events: none;
-  z-index: 0;
-}
+/* Background image removed for Pi performance */
 
 .simple-container {
   flex: 1;
@@ -808,7 +779,7 @@ onUnmounted(() => {
   justify-content: center;
   width: 100%;
   height: 100vh;
-  will-change: transform;
+  /* Removed will-change for Pi performance */
   position: relative;
   z-index: 1;
 }
