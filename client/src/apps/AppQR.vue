@@ -105,14 +105,15 @@ async function fetchToken() {
       // Generate URL with token
       currentUrl.value = `${CLIENT_URL}?token=${currentToken.value}`;
 
-      // Generate QR code with dark brown color
+      // Generate QR code with dark brown color - reduced size for Raspberry Pi performance
       qrCodeDataUrl.value = await QRCode.toDataURL(currentUrl.value, {
-        width: 2048,
+        width: 512, // Reduced from 2048 to 512 for better performance
         margin: 2,
         color: {
           dark: "#5C3317", // Dark brown
           light: "#ffffff",
         },
+        errorCorrectionLevel: "M", // Medium error correction (was default 'M', making explicit)
       });
     }
 
@@ -183,9 +184,7 @@ onUnmounted(() => {
   justify-content: center;
   height: 100vh;
   width: 100vw;
-  background: url("/bg.png") #fdbc2e;
-  background-size: cover;
-  background-position: center;
+  background: #fdbc2e; /* Removed background image for better performance */
   padding: 8vh 6vw;
   box-sizing: border-box;
   overflow: hidden;
@@ -238,12 +237,7 @@ onUnmounted(() => {
   cursor: pointer;
   font-weight: 600;
   font-size: 1.1rem;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.retry-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 8px 20px rgba(92, 51, 23, 0.3);
+  /* Removed transitions for better performance */
 }
 
 .qr-content {
@@ -261,17 +255,13 @@ onUnmounted(() => {
 .qr-code-link {
   text-decoration: none;
   cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.qr-code-link:hover {
-  transform: scale(1.02);
+  /* Removed transition for better performance */
 }
 
 .qr-code-container {
   background: white;
   box-shadow: 0 12px 40px rgba(92, 51, 23, 0.3);
-  transition: box-shadow 0.2s;
+  /* Removed transition for better performance */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -285,10 +275,6 @@ onUnmounted(() => {
   padding: 2vw;
 }
 
-.qr-code-link:hover .qr-code-container {
-  box-shadow: 0 16px 50px rgba(92, 51, 23, 0.4);
-}
-
 .qr-code {
   display: block;
   width: 100%;
@@ -296,6 +282,8 @@ onUnmounted(() => {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+  image-rendering: -webkit-optimize-contrast; /* Better QR code rendering at lower resolution */
+  image-rendering: crisp-edges;
 }
 
 .countdown {
