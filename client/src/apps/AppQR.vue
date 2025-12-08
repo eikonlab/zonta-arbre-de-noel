@@ -298,7 +298,7 @@ onUnmounted(() => {
 }
 
 .qr-instruction {
-  font-size: 4rem;
+  font-size: 3.5rem;
   font-weight: 600;
   color: #5c3317;
   text-align: center;
