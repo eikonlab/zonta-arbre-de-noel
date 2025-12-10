@@ -33,9 +33,7 @@
         <div v-else-if="showNotifHelp" class="notif-help">
           <small>📱 Notifications non disponibles</small>
         </div>
-        <button @click="handleLogout" class="btn btn-logout">
-          🚪 Déconnexion
-        </button>
+        <button @click="handleLogout" class="btn btn-logout">🚪 Déconnexion</button>
       </div>
     </header>
 
@@ -82,8 +80,7 @@
                   flagged: message.flagged,
                   hidden: message.hidden,
                   toxic: message.flagged && message.flagged.includes('toxic'),
-                  'off-topic':
-                    message.flagged && message.flagged.includes('hors-sujet'),
+                  'off-topic': message.flagged && message.flagged.includes('hors-sujet'),
                 }"
               >
                 <td>
@@ -92,18 +89,14 @@
 
                 <td>
                   <div class="date-container">
-                    <span class="date">{{
-                      formatDate(message.createdAt)
-                    }}</span>
+                    <span class="date">{{ formatDate(message.createdAt) }}</span>
                     <select
                       v-if="message.priorityNumber"
                       class="priority-select"
                       :value="message.priorityNumber"
                       @change="updatePriority(message, $event)"
                     >
-                      <option v-for="n in 5" :key="n" :value="n">
-                        Écran {{ n }}
-                      </option>
+                      <option v-for="n in 5" :key="n" :value="n">Écran {{ n }}</option>
                     </select>
                   </div>
                 </td>
@@ -165,8 +158,7 @@
               flagged: message.flagged,
               hidden: message.hidden,
               toxic: message.flagged && message.flagged.includes('toxic'),
-              'off-topic':
-                message.flagged && message.flagged.includes('hors-sujet'),
+              'off-topic': message.flagged && message.flagged.includes('hors-sujet'),
             }"
           >
             <div class="message-card-header">
@@ -180,9 +172,7 @@
                     :value="message.priorityNumber"
                     @change="updatePriority(message, $event)"
                   >
-                    <option v-for="n in 5" :key="n" :value="n">
-                      Écran {{ n }}
-                    </option>
+                    <option v-for="n in 5" :key="n" :value="n">Écran {{ n }}</option>
                   </select>
                 </div>
               </div>
@@ -366,10 +356,7 @@ export default {
 
     // Clean up visibility listener
     if (this.handleVisibilityChange) {
-      document.removeEventListener(
-        "visibilitychange",
-        this.handleVisibilityChange
-      );
+      document.removeEventListener("visibilitychange", this.handleVisibilityChange);
     }
 
     // Clean up health check interval
@@ -389,8 +376,7 @@ export default {
       return `${kind}:${d}${detail.length > 28 ? "…" : ""}`;
     },
     async initializeSocket() {
-      const API_URL =
-        import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+      const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
       this.socket = io(API_URL);
 
       this.socket.on("connect", () => {
@@ -411,9 +397,7 @@ export default {
       });
 
       this.socket.on("message-updated", (updatedMessage) => {
-        const index = this.messages.findIndex(
-          (m) => m.id === updatedMessage.id
-        );
+        const index = this.messages.findIndex((m) => m.id === updatedMessage.id);
         if (index !== -1) {
           this.messages[index] = updatedMessage;
         }
@@ -427,8 +411,7 @@ export default {
     async loadMessages() {
       try {
         this.loading = true;
-        const API_URL =
-          import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+        const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
         const response = await axios.get(`${API_URL}/messages`);
         this.messages = response.data.map((message) => ({
           ...message,
@@ -452,17 +435,13 @@ export default {
         const wasFlagged = Boolean(message.flagged);
         // Update local state optimistically
         message.hidden = !wantVisible;
-        const API_URL =
-          import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+        const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
         // If admin wants it visible and it was flagged, auto-approve: clear flags
         const payload =
           wantVisible && wasFlagged
             ? { hidden: false, flagged: null, flagReason: null }
             : { hidden: !wantVisible };
-        const { data } = await axios.patch(
-          `${API_URL}/messages/${message.id}`,
-          payload
-        );
+        const { data } = await axios.patch(`${API_URL}/messages/${message.id}`, payload);
         // Sync local copy with server state
         const index = this.messages.findIndex((m) => m.id === message.id);
         if (index !== -1) this.messages[index] = data;
@@ -482,13 +461,11 @@ export default {
         // Optimistic update
         message.priorityNumber = newPriority;
 
-        const API_URL =
-          import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+        const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 
-        const { data } = await axios.patch(
-          `${API_URL}/messages/${message.id}`,
-          { priorityNumber: newPriority }
-        );
+        const { data } = await axios.patch(`${API_URL}/messages/${message.id}`, {
+          priorityNumber: newPriority,
+        });
 
         // Sync local copy with server state
         const index = this.messages.findIndex((m) => m.id === message.id);
@@ -505,8 +482,7 @@ export default {
       if (!confirm("Êtes-vous sûr de vouloir supprimer ce message ?")) return;
 
       try {
-        const API_URL =
-          import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+        const API_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
         await axios.delete(`${API_URL}/messages/${messageId}`);
         this.messages = this.messages.filter((m) => m.id !== messageId);
       } catch (error) {
