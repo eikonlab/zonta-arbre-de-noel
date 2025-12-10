@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import MessageView from '../views/MessageView.vue'
+import Wrapped from '../views/Wrapped.vue'
 import AppAdmin from '../apps/AppAdmin.vue'
 import AppQR from '../apps/AppQR.vue'
 import AdminLogin from '../views/AdminLogin.vue'
@@ -33,6 +34,11 @@ const routes = [
     path: '/qr',
     name: 'QR',
     component: AppQR
+  },
+  {
+    path: '/wrapped',
+    name: 'Wrapped',
+    component: Wrapped
   }
 ]
 
