@@ -1738,7 +1738,7 @@ onUnmounted(() => {
 
 .message-carousel {
   position: relative;
-  height: 220px;
+  height: 50vh;
   overflow: hidden;
   padding: 0.5rem 0;
 }
